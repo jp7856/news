@@ -1,119 +1,229 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
-  <meta name="theme-color" content="#2563eb">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+  <meta name="theme-color" content="#2563eb" />
   <title>기사 읽기 · JP 타임즈</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
   <header class="header">
     <h1><span class="brand">JP 타임즈</span></h1>
     <p class="tagline">기사 읽기</p>
   </header>
+
   <main class="container">
     <a href="#" id="backLink" class="back-link">← 목록으로</a>
+
     <article class="article-detail">
       <div class="article-img-wrap" id="articleImgWrap">
         <img id="articleImg" src="" alt="" />
       </div>
+
       <div class="meta">
-        <span id="levelTag" class="level-tag">LEVEL 2</span>
-        <span id="dateMeta">2026.02.09</span>
+        <span id="levelTag" class="level-tag">초등</span>
+        <span id="dateMeta"></span>
       </div>
+
       <h1 id="articleTitle">기사 제목</h1>
       <div class="body" id="articleBody"></div>
+
       <section class="article-keywords" id="articleKeywords" aria-label="핵심 키워드">
         <h2 class="keywords-title">핵심 키워드</h2>
         <div class="keywords-list" id="keywordsList"></div>
       </section>
     </article>
+
     <nav class="article-nav" id="articleNav" aria-label="이전·다음 기사">
       <a href="#" id="prevArticle" class="article-nav-link article-nav-prev"></a>
       <a href="#" id="nextArticle" class="article-nav-link article-nav-next"></a>
     </nav>
   </main>
-  <footer class="footer"><p>© JP 타임즈</p></footer>
-  <script src="js/app.js"></script>
-  <script src="js/articles.js"></script>
-  <script>
-    (function() {
-      var params = new URLSearchParams(location.search);
-      var level = params.get('level') || 'elementary';
-      var seq = parseInt(params.get('seq') || '1', 10);
-      document.getElementById('backLink').href = 'list.html?level=' + level;
 
-      var article = window.ARTICLES && window.ARTICLES[seq];
+  <footer class="footer"><p>© JP 타임즈</p></footer>
+
+  <script src="js/app.js"></script>
+
+  <script>
+    (async function () {
+      var params = new URLSearchParams(location.search);
+      var level = params.get("level") || "elementary";
+      var issue = params.get("issue"); // ✅ 이제 issue 기반으로 데이터 로드
+      var seq = parseInt(params.get("seq") || "1", 10);
+
+      var levelLabel = { elementary: "초등", middle: "중등", high: "고등" }[level] || level;
+      document.getElementById("levelTag").textContent = levelLabel;
+
+      function getTitle(a, lv) {
+        return a && a.title && typeof a.title === "object" ? a.title[lv] : (a ? a.title : "");
+      }
+      function getBody(a, lv) {
+        return a && a.body && typeof a.body === "object" ? a.body[lv] : (a ? a.body : "");
+      }
+      function getImg(a, lv) {
+        if (!a) return "";
+        if (a.image && typeof a.image === "object" && a.image[lv]) return a.image[lv];
+        if (a.image && typeof a.image === "string") return a.image;
+        return "";
+      }
+      function getAlt(a, lv, fallback) {
+        if (!a) return fallback || "";
+        if (a.imageAlt && typeof a.imageAlt === "object" && a.imageAlt[lv]) return a.imageAlt[lv];
+        if (typeof a.imageAlt === "string") return a.imageAlt;
+        return fallback || "";
+      }
+
+      async function fetchJson(url) {
+        var r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) throw new Error(url + " fetch failed: " + r.status);
+        return await r.json();
+      }
+
+      // ✅ backLink: issue/level 유지
+      var back = document.getElementById("backLink");
+      back.href = "list.html?level=" + encodeURIComponent(level) + (issue ? "&issue=" + encodeURIComponent(issue) : "");
+
+      // issue가 있으면 issue JSON에서 로드
+      var issueData = null;
+      var articles = null;
+
+      if (issue) {
+        try {
+          issueData = await fetchJson("data/issues/" + issue + ".json");
+          articles = issueData.ARTICLES || issueData.articles || null;
+        } catch (e) {
+          console.error(e);
+          // 아래에서 에러 화면 처리
+        }
+      }
+
+      if (!articles || typeof articles !== "object") {
+        // ❗ issue 기반 데이터가 없으면 안내
+        document.getElementById("articleImgWrap").style.display = "none";
+        document.getElementById("dateMeta").textContent = "";
+        document.getElementById("articleTitle").textContent = "기사 데이터를 불러오지 못했습니다.";
+        document.getElementById("articleBody").innerHTML =
+          '<p>목록으로 돌아가서 다시 선택해 주세요.</p>' +
+          '<p><a href="' + back.href + '">목록으로</a></p>';
+        document.getElementById("articleKeywords").style.display = "none";
+        document.getElementById("articleNav").style.display = "none";
+        return;
+      }
+
+      // ✅ seq 목록
+      var seqs = Object.keys(articles)
+        .map(Number)
+        .filter(function (n) { return !isNaN(n); })
+        .sort(function (a, b) { return a - b; });
+
+      var current = articles[String(seq)] || articles[seq];
+
+      if (!current) {
+        document.getElementById("articleImgWrap").style.display = "none";
+        document.getElementById("dateMeta").textContent = issueData && issueData.date ? issueData.date : "";
+        document.getElementById("articleTitle").textContent = "해당 기사를 찾을 수 없습니다.";
+        document.getElementById("articleBody").innerHTML =
+          '<p>목록으로 돌아가서 다시 선택해 주세요.</p>' +
+          '<p><a href="' + back.href + '">목록으로</a></p>';
+        document.getElementById("articleKeywords").style.display = "none";
+        document.getElementById("articleNav").style.display = "none";
+        return;
+      }
+
+      // ✅ 본문 표시
+      document.getElementById("dateMeta").textContent = issueData && issueData.date ? issueData.date : "";
+
+      var titleText = getTitle(current, level) || ("기사 " + seq);
+      var bodyHtml = getBody(current, level) || "";
+
+      var imgWrap = document.getElementById("articleImgWrap");
+      var imgEl = document.getElementById("articleImg");
+      var imgSrc = getImg(current, level);
+
+      if (imgSrc) {
+        imgWrap.style.display = "";
+        imgEl.src = imgSrc;
+        imgEl.alt = getAlt(current, level, titleText);
+      } else {
+        imgWrap.style.display = "none";
+      }
+
+      document.getElementById("articleTitle").textContent = titleText;
+      document.getElementById("articleBody").innerHTML = bodyHtml;
+      document.title = titleText + " · JP 타임즈";
+
+      // ✅ 키워드(없으면 숨김)
+      var keywords = current.keywords;
+      var listEl = document.getElementById("keywordsList");
       var keywordCount = { elementary: 5, middle: 7, high: 9 };
       var count = keywordCount[level] || 5;
 
-      if (article) {
-        var bodyByLevel = article.body && article.body[level];
-        var imgByLevel = article.image && article.image[level];
-        var altByLevel = article.imageAlt && article.imageAlt[level];
-        var levelLabel = { elementary: '초등', middle: '중등', high: '고등' }[level] || level;
-
-        var imgWrap = document.getElementById('articleImgWrap');
-        var img = document.getElementById('articleImg');
-        img.src = imgByLevel || (typeof article.image === 'string' ? article.image : '');
-        var titleByLevel = article.title && typeof article.title === 'object' ? article.title[level] : article.title;
-        var titleText = titleByLevel || (typeof article.title === 'string' ? article.title : '');
-        img.alt = altByLevel || article.imageAlt || titleText;
-        document.getElementById('levelTag').textContent = levelLabel;
-        document.getElementById('articleTitle').textContent = titleText;
-        document.getElementById('articleBody').innerHTML = bodyByLevel || (typeof article.body === 'string' ? article.body : '');
-        document.title = titleText + ' · JP 타임즈';
-
-        var keywords = article.keywords;
-        var listEl = document.getElementById('keywordsList');
-        if (keywords && listEl) {
-          var show = keywords.slice(0, count);
-          listEl.innerHTML = show.map(function(k) {
-            var meaning = '<span class="keyword-meaning">' + k.meaning + '</span>';
-            var ex = k.example ? '<p class="keyword-example-line">예문 : <span class="keyword-example">' + k.example + '</span></p>' : '';
-            return '<div class="keyword-item"><p class="keyword-line"><span class="keyword-word">' + k.word + '</span> : ' + meaning + '</p>' + ex + '</div>';
-          }).join('');
-        } else if (listEl) {
-          document.getElementById('articleKeywords').style.display = 'none';
-        }
-
-        var articles = window.ARTICLES;
-        var seqs = Object.keys(articles).map(Number).filter(function(n) { return !isNaN(n); }).sort(function(a, b) { return a - b; });
-        var minSeq = seqs[0];
-        var maxSeq = seqs[seqs.length - 1];
-
-        var prevLink = document.getElementById('prevArticle');
-        var nextLink = document.getElementById('nextArticle');
-        function getTitle(a) { return a.title && typeof a.title === 'object' ? a.title[level] : a.title; }
-        if (seq > minSeq && articles[seq - 1]) {
-          prevLink.href = 'article.html?level=' + level + '&seq=' + (seq - 1);
-          prevLink.innerHTML = '<span class="article-nav-label">← 이전 기사</span><span class="article-nav-title">' + (getTitle(articles[seq - 1]) || '') + '</span>';
-          prevLink.style.display = '';
-        } else {
-          prevLink.style.display = 'none';
-        }
-        if (seq < maxSeq && articles[seq + 1]) {
-          nextLink.href = 'article.html?level=' + level + '&seq=' + (seq + 1);
-          nextLink.innerHTML = '<span class="article-nav-label">다음 기사 →</span><span class="article-nav-title">' + (getTitle(articles[seq + 1]) || '') + '</span>';
-          nextLink.style.display = '';
-        } else {
-          nextLink.style.display = 'none';
-        }
-        var navEl = document.getElementById('articleNav');
-        navEl.classList.remove('article-nav-prev-only', 'article-nav-next-only');
-        if (seq <= minSeq) navEl.classList.add('article-nav-next-only');
-        else if (seq >= maxSeq) navEl.classList.add('article-nav-prev-only');
+      if (Array.isArray(keywords) && keywords.length && listEl) {
+        var show = keywords.slice(0, count);
+        listEl.innerHTML = show.map(function (k) {
+          var meaning = k.meaning ? '<span class="keyword-meaning">' + k.meaning + "</span>" : "";
+          var ex = k.example ? '<p class="keyword-example-line">예문 : <span class="keyword-example">' + k.example + "</span></p>" : "";
+          return (
+            '<div class="keyword-item">' +
+              '<p class="keyword-line"><span class="keyword-word">' + (k.word || "") + "</span>" +
+              (meaning ? " : " + meaning : "") +
+              "</p>" +
+              ex +
+            "</div>"
+          );
+        }).join("");
       } else {
-        document.getElementById('articleImgWrap').style.display = 'none';
-        document.getElementById('articleTitle').textContent = '기사 목록에서 기사를 선택해 주세요.';
-        document.getElementById('articleBody').innerHTML = '<p><a href="list.html?level=' + level + '">목록으로 돌아가기</a></p>';
-        document.getElementById('articleKeywords').style.display = 'none';
-        document.getElementById('articleNav').style.display = 'none';
+        document.getElementById("articleKeywords").style.display = "none";
       }
+
+      // ✅ 이전/다음(같은 issue 안에서)
+      var idx = seqs.indexOf(seq);
+      var prevSeq = idx > 0 ? seqs[idx - 1] : null;
+      var nextSeq = idx >= 0 && idx < seqs.length - 1 ? seqs[idx + 1] : null;
+
+      var prevLink = document.getElementById("prevArticle");
+      var nextLink = document.getElementById("nextArticle");
+      var navEl = document.getElementById("articleNav");
+
+      function makeHref(s) {
+        return (
+          "article.html?level=" + encodeURIComponent(level) +
+          "&issue=" + encodeURIComponent(issue) +
+          "&seq=" + encodeURIComponent(String(s))
+        );
+      }
+
+      if (prevSeq != null) {
+        var prevA = articles[String(prevSeq)] || articles[prevSeq];
+        prevLink.href = makeHref(prevSeq);
+        prevLink.innerHTML =
+          '<span class="article-nav-label">← 이전 기사</span>' +
+          '<span class="article-nav-title">' + (getTitle(prevA, level) || "") + "</span>";
+        prevLink.style.display = "";
+      } else {
+        prevLink.style.display = "none";
+      }
+
+      if (nextSeq != null) {
+        var nextA = articles[String(nextSeq)] || articles[nextSeq];
+        nextLink.href = makeHref(nextSeq);
+        nextLink.innerHTML =
+          '<span class="article-nav-label">다음 기사 →</span>' +
+          '<span class="article-nav-title">' + (getTitle(nextA, level) || "") + "</span>";
+        nextLink.style.display = "";
+      } else {
+        nextLink.style.display = "none";
+      }
+
+      navEl.classList.remove("article-nav-prev-only", "article-nav-next-only");
+      if (prevSeq == null && nextSeq != null) navEl.classList.add("article-nav-next-only");
+      else if (prevSeq != null && nextSeq == null) navEl.classList.add("article-nav-prev-only");
     })();
   </script>
 </body>

@@ -1,12 +1,13 @@
 {
-    "name": "jp-times",
-    "version": "1.0.0",
-    "private": true,
-    "type": "module",
-    "scripts": {
-      "weekly": "node scripts/generate-weekly.js"
-    },
-    "dependencies": {
-      "fast-xml-parser": "^4.5.0"
-    }
+  "name": "jp-times",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "weekly": "node scripts/generate-weekly.js",
+    "generate:weekly-issue": "node scripts/generate-weekly.js"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.5.0"
   }
+}

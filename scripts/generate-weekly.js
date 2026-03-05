@@ -19,12 +19,12 @@ function formatDateKR(d) {
 }
 
 function lastMondayKST(now = new Date()) {
-  // GitHub Actions는 UTC일 수 있어. 날짜 계산은 단순히 “가장 최근 월요일”로.
+  // 러프하게 "가장 최근 월요일" 날짜만 계산(시간은 00:00)
   const d = new Date(now);
   const day = d.getDay(); // 0=Sun..1=Mon
-  const diff = (day + 6) % 7; // 월요일이면 0, 화요일이면 1...
+  const diff = (day + 6) % 7; // Mon=0, Tue=1...
   d.setDate(d.getDate() - diff);
-  d.setHours(0,0,0,0);
+  d.setHours(0, 0, 0, 0);
   return d;
 }
 
@@ -34,10 +34,9 @@ async function fetchText(url) {
   return await res.text();
 }
 
-function pickHotTopics(items, topN = 5) {
-  // 매우 단순한 “이슈화” 점수: 제목 정규화 후 빈도
+function pickHotTopics(items, topN = 12) {
   const norm = (s) =>
-    s
+    (s || "")
       .replace(/\[[^\]]+\]/g, "")
       .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .replace(/\s+/g, " ")
@@ -46,7 +45,7 @@ function pickHotTopics(items, topN = 5) {
 
   const map = new Map();
   for (const it of items) {
-    const key = norm(it.title || "");
+    const key = norm(it.title);
     if (!key) continue;
     map.set(key, (map.get(key) || 0) + 1);
   }
@@ -57,48 +56,37 @@ function pickHotTopics(items, topN = 5) {
     .map(([key, cnt]) => ({ topic: key, score: cnt }));
 }
 
-async function generateArticlesPayload({ topics, issueNo, dateStr }) {
-  // ✅ 여기서 “현재 너의 기사 형식”에 맞춰 ARTICLES 구조를 만들면 됨
-  // 일단 기본 스켈레톤: seq 1..5만 생성(초등 5개 기준)
+function buildPayload({ topics, issueNo, dateStr }) {
+  // ✅ 기사 1..12 생성 (list.html에서 level별로 5/8/12개만 보여줌)
   const articles = {};
   topics.forEach((t, idx) => {
     const seq = idx + 1;
-    articles[seq] = {
+    const headline = t.topic;
+
+    articles[String(seq)] = {
       title: {
-        elementary: `[핫이슈] ${t.topic}`,
-        middle: `[핫이슈] ${t.topic}`,
-        high: `[핫이슈] ${t.topic}`
+        elementary: `[핫이슈] ${headline}`,
+        middle: `[핫이슈] ${headline}`,
+        high: `[핫이슈] ${headline}`
       },
-      image: {
-        elementary: "",
-        middle: "",
-        high: ""
-      },
-      // 아래 필드는 article.html이 무엇을 쓰는지에 맞춰 조정 필요
+      image: { elementary: "", middle: "", high: "" },
       body: {
-        elementary: `이번 주 가장 많이 다뤄진 이슈는 "${t.topic}" 입니다. (점수: ${t.score})`,
-        middle: `이번 주 핵심 이슈: "${t.topic}" — 여러 매체에서 반복적으로 언급되었습니다. (점수: ${t.score})`,
-        high: `"${t.topic}" 관련 보도가 집중되었고, 쟁점과 파급효과가 논의되었습니다. (점수: ${t.score})`
+        elementary: `이번 주 가장 많이 다뤄진 이슈는 "${headline}" 입니다. (점수: ${t.score})`,
+        middle: `이번 주 핵심 이슈: "${headline}" — 여러 매체에서 반복적으로 언급되었습니다. (점수: ${t.score})`,
+        high: `"${headline}" 관련 보도가 집중되었고, 쟁점과 파급효과가 논의되었습니다. (점수: ${t.score})`
       },
-      meta: {
-        issue: issueNo,
-        date: dateStr
-      }
+      meta: { issue: issueNo, date: dateStr }
     };
   });
 
-  return {
-    issue: issueNo,
-    date: dateStr,
-    ARTICLES: articles
-  };
+  return { issue: issueNo, date: dateStr, ARTICLES: articles };
 }
 
 async function main() {
   ensureDir(DATA_DIR);
   ensureDir(ISSUES_DIR);
 
-  // 1) 다음 호수 번호 계산
+  // 1) 다음 호수 번호 계산 (issues.json은 최신이 위)
   let issues = [];
   if (fs.existsSync(ISSUES_INDEX)) {
     issues = JSON.parse(fs.readFileSync(ISSUES_INDEX, "utf-8"));
@@ -111,9 +99,8 @@ async function main() {
   const mon = lastMondayKST(new Date());
   const dateStr = formatDateKR(mon);
 
-  // 3) RSS 수집(원하는 소스로 바꿔도 됨)
+  // 3) RSS 수집
   const feeds = [
-    // 예시: 구글뉴스 RSS(키워드 기반) — 필요시 바꿔
     "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko"
   ];
 
@@ -125,7 +112,10 @@ async function main() {
       const xml = await fetchText(url);
       const json = parser.parse(xml);
       const channel = json?.rss?.channel;
-      const feedItems = channel?.item ? (Array.isArray(channel.item) ? channel.item : [channel.item]) : [];
+      const feedItems = channel?.item
+        ? Array.isArray(channel.item) ? channel.item : [channel.item]
+        : [];
+
       feedItems.forEach((it) => {
         items.push({
           title: it.title,
@@ -138,25 +128,26 @@ async function main() {
     }
   }
 
-  const topics = pickHotTopics(items, 12);
-  const payload = await generateArticlesPayload({ topics, issueNo: nextIssue, dateStr }); const fallback = [
+  // 4) 토픽 뽑기 + fallback 채우기
+  const fallback = [
     "경제", "정치", "사회", "국제", "과학", "기술",
     "교육", "문화", "연예", "스포츠", "환경", "건강"
   ];
-  
-  
+
   let topics = pickHotTopics(items, 12);
   while (topics.length < 12) {
-    const t = fallback[topics.length];
-    topics.push({ topic: t, score: 0 });
+    topics.push({ topic: fallback[topics.length], score: 0 });
   }
   topics = topics.slice(0, 12);
 
-  // 4) 파일 저장
+  // 5) payload 생성
+  const payload = buildPayload({ topics, issueNo: nextIssue, dateStr });
+
+  // 6) 파일 저장
   const issueFile = path.join(ISSUES_DIR, `${nextIssue}.json`);
   fs.writeFileSync(issueFile, JSON.stringify(payload, null, 2), "utf-8");
 
-  // 5) issues.json 갱신(최신이 위로)
+  // 7) issues.json 갱신(최신이 위로)
   const newEntry = { issue: nextIssue, date: dateStr };
   const newIssues = [newEntry, ...issues.filter((x) => x.issue !== nextIssue)];
   fs.writeFileSync(ISSUES_INDEX, JSON.stringify(newIssues, null, 2), "utf-8");
