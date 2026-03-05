@@ -74,6 +74,10 @@
 
     var maxByLevel = { elementary: 5, middle: 8, high: 12 };
     var maxSeq = maxByLevel[level] || 12;
+    var seqs = Object.keys(articles).map(Number)
+  .filter(function(n) { return !isNaN(n) && n <= maxSeq; })
+
+  
 
     async function renderIssue(issueNo) {
       list.innerHTML = '';
