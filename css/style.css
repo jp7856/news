@@ -313,3 +313,45 @@
   .jp-card-byline, .jp-card-issue, .jp-footer { color:#9ca3af; }
   .jp-footer { border-top:1px solid #111827; }
 }
+
+
+/* ===== Difficulty-based sizing (match screenshots 11~13) ===== */
+
+/* 기본(중등 기준) */
+.jp-wrap[data-level] .jp-title { font-size: 40px; font-weight: 900; }
+.jp-wrap[data-level] .jp-title-line { height: 2px; margin: 0 0 16px; width: 100%; }
+.jp-wrap[data-level] .jp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.jp-wrap[data-level] .jp-card-thumb { aspect-ratio: 16 / 6.6; }
+.jp-wrap[data-level] .jp-card-body { padding: 12px 14px 14px; }
+.jp-wrap[data-level] .jp-card-title { font-size: 16px; font-weight: 900; line-height: 1.25; }
+
+/* 초등(더 크게, 시원하게) */
+.jp-wrap[data-level="elementary"] .jp-title { font-size: 42px; }
+.jp-wrap[data-level="elementary"] .jp-grid { gap: 18px; }
+.jp-wrap[data-level="elementary"] .jp-card-thumb { aspect-ratio: 16 / 7.2; }
+.jp-wrap[data-level="elementary"] .jp-card-title { font-size: 17px; }
+.jp-wrap[data-level="elementary"] .jp-card-body { padding: 13px 15px 15px; }
+
+/* 중등(중간) */
+.jp-wrap[data-level="middle"] .jp-title { font-size: 40px; }
+.jp-wrap[data-level="middle"] .jp-grid { gap: 16px; }
+.jp-wrap[data-level="middle"] .jp-card-thumb { aspect-ratio: 16 / 6.6; }
+.jp-wrap[data-level="middle"] .jp-card-title { font-size: 16px; }
+.jp-wrap[data-level="middle"] .jp-card-body { padding: 12px 14px 14px; }
+
+/* 고등(촘촘하게) */
+.jp-wrap[data-level="high"] .jp-title { font-size: 38px; }
+.jp-wrap[data-level="high"] .jp-grid { gap: 14px; }
+.jp-wrap[data-level="high"] .jp-card-thumb { aspect-ratio: 16 / 5.8; }
+.jp-wrap[data-level="high"] .jp-card-issue { font-size: 11px; font-weight: 800; }
+.jp-wrap[data-level="high"] .jp-card-title { font-size: 15px; line-height: 1.22; }
+.jp-wrap[data-level="high"] .jp-card-byline { font-size: 11px; font-weight: 800; }
+.jp-wrap[data-level="high"] .jp-card-body { padding: 10px 12px 12px; }
+
+/* 모바일에서도 차이 유지 */
+@media (max-width: 760px){
+  .jp-wrap[data-level] .jp-grid { grid-template-columns: 1fr; }
+  .jp-wrap[data-level="elementary"] .jp-title { font-size: 36px; }
+  .jp-wrap[data-level="middle"] .jp-title { font-size: 34px; }
+  .jp-wrap[data-level="high"] .jp-title { font-size: 32px; }
+}
