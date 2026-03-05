@@ -1,0 +1,10 @@
+{
+  "articles": [
+    {
+      "title": "Sample Article",
+      "summary": "기사 요약",
+      "level": "elementary",
+      "file": "article.html"
+    }
+  ]
+}
