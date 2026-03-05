@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>JP 타임즈 · 초등·중등·고등</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- 모바일·file:// 대비: CSS 미로딩 시에도 레이아웃 유지 -->
+  <style>
+    .header{background:#fff;padding:1.5rem 1.25rem;text-align:center;border-bottom:1px solid #e8eaed}
+    .header h1{font-size:1.5rem;font-weight:700;color:#1a1d21}
+    .tagline{font-size:0.9rem;color:#5f6368;margin-top:0.35rem}
+    .container{max-width:720px;margin:0 auto;padding:1rem}
+    .grade-cards{display:grid;gap:1rem;margin-bottom:2rem}
+    .grade-card{display:block;background:#fff;border-radius:14px;padding:1.35rem 1.5rem;text-decoration:none;color:#1a1d21;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #e8eaed}
+    .grade-card h2{font-size:1.15rem;font-weight:600;margin-bottom:0.35rem}
+    .grade-card p{font-size:0.9rem;color:#5f6368}
+    .grade-badge{display:inline-block;font-size:0.7rem;font-weight:600;padding:0.3rem 0.65rem;border-radius:6px;margin-bottom:0.75rem}
+    .grade-card[data-level="elementary"] .grade-badge{background:rgba(21,128,61,.12);color:#15803d}
+    .grade-card[data-level="middle"] .grade-badge{background:rgba(180,83,9,.12);color:#b45309}
+    .grade-card[data-level="high"] .grade-badge{background:rgba(29,78,216,.08);color:#1d4ed8}
+    .quick-nav{text-align:center}
+    .btn{display:inline-block;padding:0.875rem 1.5rem;border-radius:10px;font-size:1rem;font-weight:600;text-decoration:none;text-align:center;background:#1d4ed8;color:#fff;width:100%;max-width:320px;margin:0 auto}
+    .footer{text-align:center;padding:1.35rem 1rem;font-size:0.85rem;color:#5f6368;border-top:1px solid #e8eaed;background:#fff}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1><span class="brand">JP 타임즈</span></h1>
+    <p class="tagline">단계를 선택하고 학습을 시작하세요</p>
+  </header>
+
+  <main class="container">
+    <section class="grade-cards">
+      <a href="list.html?level=elementary" class="grade-card" data-level="elementary">
+        <span class="grade-badge">초등</span>
+        <h2>초등 과정</h2>
+        <p>KIDS · 기초 읽기와 단어 학습</p>
+      </a>
+      <a href="list.html?level=middle" class="grade-card" data-level="middle">
+        <span class="grade-badge">중등</span>
+        <h2>중등 과정</h2>
+        <p>JUNIOR · 독해와 표현 연습</p>
+      </a>
+      <a href="list.html?level=high" class="grade-card" data-level="high">
+        <span class="grade-badge">고등</span>
+        <h2>고등 과정</h2>
+        <p>NE Times · 심화 독해·논술</p>
+      </a>
+    </section>
+
+    <nav class="quick-nav">
+      <a href="pricing.html" class="btn btn-primary">구독·결제</a>
+    </nav>
+  </main>
+
+  <footer class="footer">
+    <p><a href="모바일링크.html" style="color:#1d4ed8;text-decoration:none;">모바일에서 보기</a> · © JP 타임즈 · 토스페이먼츠 결제</p>
+  </footer>
+  <script src="js/app.js"></script>
+</body>
+</html>

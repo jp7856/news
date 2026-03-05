@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+  <meta name="theme-color" content="#2563eb">
+  <title>구독·결제 · JP 타임즈</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="pricing-page">
+  <header class="header">
+    <h1><span class="brand">JP 타임즈</span></h1>
+    <p class="tagline">구독·결제 (토스페이먼츠)</p>
+  </header>
+  <main class="container">
+    <a href="index.html" class="back-link">← 메인으로</a>
+    <div class="pricing-header">
+      <h1>구독 플랜</h1>
+      <p>원하는 플랜을 선택하고 결제하세요.</p>
+    </div>
+    <div class="plans">
+      <div class="plan-card">
+        <h3>6개월 구독</h3>
+        <div class="price">₩120,000<span style="font-size:0.9rem;font-weight:400;">/6개월</span></div>
+        <p class="price-note">6개월 이용</p>
+        <ul class="features">
+          <li>전체 기사 무제한 읽기</li>
+          <li>PDF·MP3 다운로드</li>
+          <li>학습 자료 이용</li>
+        </ul>
+        <button type="button" class="btn btn-primary" data-plan="6months" data-amount="120000" data-name="학습타임스 6개월">6개월 결제하기</button>
+      </div>
+      <div class="plan-card recommended">
+        <h3>12개월 구독</h3>
+        <div class="price">₩198,000<span style="font-size:0.9rem;font-weight:400;">/12개월</span></div>
+        <p class="price-note">12개월 이용</p>
+        <ul class="features">
+          <li>전체 기사 무제한 읽기</li>
+          <li>PDF·MP3 다운로드</li>
+          <li>학습 자료 이용</li>
+        </ul>
+        <button type="button" class="btn btn-primary" data-plan="12months" data-amount="198000" data-name="학습타임스 12개월">12개월 결제하기</button>
+      </div>
+    </div>
+  </main>
+  <footer class="footer"><p>© JP 타임즈 · 토스페이먼츠 결제</p></footer>
+  <script src="js/app.js"></script>
+  <script src="js/payment.js"></script>
+  <script>
+    document.querySelectorAll('.plan-card .btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var amount = this.getAttribute('data-amount');
+        var name = this.getAttribute('data-name');
+        var plan = this.getAttribute('data-plan');
+        window.location.href = 'payment.html?amount=' + amount + '&orderName=' + encodeURIComponent(name) + '&plan=' + plan;
+      });
+    });
+  </script>
+</body>
+</html>

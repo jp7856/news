@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+  <meta name="theme-color" content="#2563eb">
+  <title>기사 읽기 · JP 타임즈</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <h1><span class="brand">JP 타임즈</span></h1>
+    <p class="tagline">기사 읽기</p>
+  </header>
+  <main class="container">
+    <a href="#" id="backLink" class="back-link">← 목록으로</a>
+    <article class="article-detail">
+      <div class="article-img-wrap" id="articleImgWrap">
+        <img id="articleImg" src="" alt="" />
+      </div>
+      <div class="meta">
+        <span id="levelTag" class="level-tag">LEVEL 2</span>
+        <span id="dateMeta">2026.02.09</span>
+      </div>
+      <h1 id="articleTitle">기사 제목</h1>
+      <div class="body" id="articleBody"></div>
+      <section class="article-keywords" id="articleKeywords" aria-label="핵심 키워드">
+        <h2 class="keywords-title">핵심 키워드</h2>
+        <div class="keywords-list" id="keywordsList"></div>
+      </section>
+    </article>
+    <nav class="article-nav" id="articleNav" aria-label="이전·다음 기사">
+      <a href="#" id="prevArticle" class="article-nav-link article-nav-prev"></a>
+      <a href="#" id="nextArticle" class="article-nav-link article-nav-next"></a>
+    </nav>
+  </main>
+  <footer class="footer"><p>© JP 타임즈</p></footer>
+  <script src="js/app.js"></script>
+  <script src="js/articles.js"></script>
+  <script>
+    (function() {
+      var params = new URLSearchParams(location.search);
+      var level = params.get('level') || 'elementary';
+      var seq = parseInt(params.get('seq') || '1', 10);
+      document.getElementById('backLink').href = 'list.html?level=' + level;
+
+      var article = window.ARTICLES && window.ARTICLES[seq];
+      var keywordCount = { elementary: 5, middle: 7, high: 9 };
+      var count = keywordCount[level] || 5;
+
+      if (article) {
+        var bodyByLevel = article.body && article.body[level];
+        var imgByLevel = article.image && article.image[level];
+        var altByLevel = article.imageAlt && article.imageAlt[level];
+        var levelLabel = { elementary: '초등', middle: '중등', high: '고등' }[level] || level;
+
+        var imgWrap = document.getElementById('articleImgWrap');
+        var img = document.getElementById('articleImg');
+        img.src = imgByLevel || (typeof article.image === 'string' ? article.image : '');
+        var titleByLevel = article.title && typeof article.title === 'object' ? article.title[level] : article.title;
+        var titleText = titleByLevel || (typeof article.title === 'string' ? article.title : '');
+        img.alt = altByLevel || article.imageAlt || titleText;
+        document.getElementById('levelTag').textContent = levelLabel;
+        document.getElementById('articleTitle').textContent = titleText;
+        document.getElementById('articleBody').innerHTML = bodyByLevel || (typeof article.body === 'string' ? article.body : '');
+        document.title = titleText + ' · JP 타임즈';
+
+        var keywords = article.keywords;
+        var listEl = document.getElementById('keywordsList');
+        if (keywords && listEl) {
+          var show = keywords.slice(0, count);
+          listEl.innerHTML = show.map(function(k) {
+            var meaning = '<span class="keyword-meaning">' + k.meaning + '</span>';
+            var ex = k.example ? '<p class="keyword-example-line">예문 : <span class="keyword-example">' + k.example + '</span></p>' : '';
+            return '<div class="keyword-item"><p class="keyword-line"><span class="keyword-word">' + k.word + '</span> : ' + meaning + '</p>' + ex + '</div>';
+          }).join('');
+        } else if (listEl) {
+          document.getElementById('articleKeywords').style.display = 'none';
+        }
+
+        var articles = window.ARTICLES;
+        var seqs = Object.keys(articles).map(Number).filter(function(n) { return !isNaN(n); }).sort(function(a, b) { return a - b; });
+        var minSeq = seqs[0];
+        var maxSeq = seqs[seqs.length - 1];
+
+        var prevLink = document.getElementById('prevArticle');
+        var nextLink = document.getElementById('nextArticle');
+        function getTitle(a) { return a.title && typeof a.title === 'object' ? a.title[level] : a.title; }
+        if (seq > minSeq && articles[seq - 1]) {
+          prevLink.href = 'article.html?level=' + level + '&seq=' + (seq - 1);
+          prevLink.innerHTML = '<span class="article-nav-label">← 이전 기사</span><span class="article-nav-title">' + (getTitle(articles[seq - 1]) || '') + '</span>';
+          prevLink.style.display = '';
+        } else {
+          prevLink.style.display = 'none';
+        }
+        if (seq < maxSeq && articles[seq + 1]) {
+          nextLink.href = 'article.html?level=' + level + '&seq=' + (seq + 1);
+          nextLink.innerHTML = '<span class="article-nav-label">다음 기사 →</span><span class="article-nav-title">' + (getTitle(articles[seq + 1]) || '') + '</span>';
+          nextLink.style.display = '';
+        } else {
+          nextLink.style.display = 'none';
+        }
+        var navEl = document.getElementById('articleNav');
+        navEl.classList.remove('article-nav-prev-only', 'article-nav-next-only');
+        if (seq <= minSeq) navEl.classList.add('article-nav-next-only');
+        else if (seq >= maxSeq) navEl.classList.add('article-nav-prev-only');
+      } else {
+        document.getElementById('articleImgWrap').style.display = 'none';
+        document.getElementById('articleTitle').textContent = '기사 목록에서 기사를 선택해 주세요.';
+        document.getElementById('articleBody').innerHTML = '<p><a href="list.html?level=' + level + '">목록으로 돌아가기</a></p>';
+        document.getElementById('articleKeywords').style.display = 'none';
+        document.getElementById('articleNav').style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>

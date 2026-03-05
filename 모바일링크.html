@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>모바일 링크 · JP 타임즈</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 2rem auto; padding: 1rem; }
+    h1 { font-size: 1.25rem; }
+    .link-box { background: #f0f2f5; padding: 1rem; border-radius: 10px; word-break: break-all; margin: 1rem 0; font-weight: 600; }
+    .link-box a { color: #1d4ed8; }
+    p { color: #555; font-size: 0.95rem; }
+    .btn { display: inline-block; margin-top: 0.5rem; padding: 0.6rem 1rem; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 8px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>모바일에서 보기</h1>
+  <p>아래 주소를 휴대폰 브라우저 주소창에 입력하세요. (같은 Wi‑Fi에서만 가능)</p>
+  <div class="link-box" id="mobileLink">http://<span id="host">[PC IP]</span>:3000</div>
+  <p>※ PC에서 먼저 <strong>서버띄우기.bat</strong>을 실행한 뒤, 창에 나온 모바일 링크를 사용하세요.</p>
+  <a href="index.html" class="btn">메인으로</a>
+  <script>
+    (function() {
+      var port = location.port || '3000';
+      var host = location.hostname;
+      var show = host === 'localhost' || host === '127.0.0.1' ? '[PC IP]' : host;
+      document.getElementById('host').textContent = show;
+      if (show !== '[PC IP]') {
+        var full = location.protocol + '//' + location.hostname + ':' + port;
+        document.getElementById('mobileLink').innerHTML = '<a href="' + full + '">' + full + '</a>';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+  <meta name="theme-color" content="#2563eb">
+  <title>결제하기 · JP 타임즈</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <h1><span class="brand">JP 타임즈</span></h1>
+    <p class="tagline">토스페이먼츠 결제</p>
+  </header>
+  <main class="container">
+    <a href="pricing.html" class="back-link">← 플랜 선택으로</a>
+    <div class="payment-box">
+      <h2>결제 정보</h2>
+      <div class="payment-summary">
+        <p><strong id="orderName">학습타임스 6개월</strong></p>
+        <p>금액: <strong id="amountText">₩120,000</strong></p>
+      </div>
+      <button type="button" class="btn btn-primary" id="toss-btn">토스로 결제하기</button>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text-dim);">실제 결제를 위해 서버에서 orderId 발급 및 토스 클라이언트 키 설정이 필요합니다.</p>
+  </main>
+  <footer class="footer"><p>© JP 타임즈 · 토스페이먼츠</p></footer>
+  <script src="https://js.tosspayments.com/v1/payment"></script>
+  <script src="js/app.js"></script>
+  <script src="js/payment.js"></script>
+  <script>
+    (function() {
+      var params = new URLSearchParams(location.search);
+      var amount = parseInt(params.get('amount') || '120000', 10);
+      var orderName = decodeURIComponent(params.get('orderName') || '학습타임스 6개월');
+      document.getElementById('orderName').textContent = orderName;
+      document.getElementById('amountText').textContent = '₩' + amount.toLocaleString();
+      document.getElementById('toss-btn').addEventListener('click', function() {
+        var base = window.location.origin + window.location.pathname.replace('payment.html', '');
+        var orderId = 'order_' + Date.now();
+        window.PAYMENT.runTossPayment({
+          amount: amount,
+          orderId: orderId,
+          orderName: orderName,
+          successUrl: base + 'success.html',
+          failUrl: base + 'fail.html'
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

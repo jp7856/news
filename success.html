@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+  <meta name="theme-color" content="#2563eb">
+  <title>결제 완료 · JP 타임즈</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header"><h1><span class="brand">JP 타임즈</span></h1></header>
+  <main class="container result-page success">
+    <h1>결제가 완료되었습니다</h1>
+    <p>구독이 활성화되었습니다.</p>
+    <dl class="detail" id="successDetail">
+      <dt>주문 번호</dt><dd id="orderId">-</dd>
+      <dt>결제 키</dt><dd id="paymentKey" style="word-break:break-all;">-</dd>
+      <dt>결제 금액</dt><dd id="totalAmount">-</dd>
+    </dl>
+    <a href="index.html" class="btn btn-primary">메인으로</a>
+  </main>
+  <footer class="footer"><p>© JP 타임즈</p></footer>
+  <script>
+    (function() {
+      var params = new URLSearchParams(location.search);
+      document.getElementById('orderId').textContent = params.get('orderId') || '-';
+      document.getElementById('paymentKey').textContent = (params.get('paymentKey') || '-').substring(0, 30) + '...';
+      document.getElementById('totalAmount').textContent = params.get('amount') ? '₩' + parseInt(params.get('amount'), 10).toLocaleString() : '-';
+    })();
+  </script>
+</body>
+</html>
