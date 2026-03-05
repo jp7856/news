@@ -2,7 +2,7 @@ name: Weekly JP Times
 
 on:
   schedule:
-    - cron: "0 0 * * 1" # 매주 월요일 00:00 UTC = 09:00 KST
+    - cron: "0 0 * * 1"
   workflow_dispatch:
 
 jobs:
@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +21,7 @@ jobs:
       - run: npm install
 
       - name: Generate weekly issue
-        run: npm run weekly
+        run: node scripts/generate-weekly.js
 
       - name: Commit & push
         run: |
