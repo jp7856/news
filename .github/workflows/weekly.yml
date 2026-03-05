@@ -1,0 +1,31 @@
+name: Weekly JP Times
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 매주 월요일 00:00 UTC = 09:00 KST
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm install
+
+      - name: Generate weekly issue
+        run: npm run weekly
+
+      - name: Commit & push
+        run: |
+          git config user.name "jp-times-bot"
+          git config user.email "jp-times-bot@users.noreply.github.com"
+          git add data/
+          git commit -m "chore: weekly issue" || exit 0
+          git push
