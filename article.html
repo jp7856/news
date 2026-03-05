@@ -3,23 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
-  <meta name="theme-color" content="#2563eb" />
+  <meta name="theme-color" content="#ffffff" />
   <title>기사 읽기 · JP 타임즈</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
-  <header class="header">
-    <h1><span class="brand">JP 타임즈</span></h1>
-    <p class="tagline">기사 읽기</p>
+  <header class="jp-header">
+    <div class="jp-header-inner">
+      <div class="jp-brand">JP 타임즈</div>
+      <div class="jp-sub">주간 기사 읽기</div>
+    </div>
   </header>
 
-  <main class="container">
-    <a href="#" id="backLink" class="back-link">← 목록으로</a>
+  <main class="jp-wrap" id="pageRoot">
+    <a href="#" id="backLink" class="jp-back">← 목록으로</a>
 
     <article class="article-detail">
       <div class="article-img-wrap" id="articleImgWrap">
@@ -27,11 +25,11 @@
       </div>
 
       <div class="meta">
-        <span id="levelTag" class="level-tag">초등</span>
+        <span id="levelTag" class="level-tag"></span>
         <span id="dateMeta"></span>
       </div>
 
-      <h1 id="articleTitle">기사 제목</h1>
+      <h1 id="articleTitle"></h1>
       <div class="body" id="articleBody"></div>
 
       <section class="article-keywords" id="articleKeywords" aria-label="핵심 키워드">
@@ -46,184 +44,169 @@
     </nav>
   </main>
 
-  <footer class="footer"><p>© JP 타임즈</p></footer>
-
-  <script src="js/app.js"></script>
+  <footer class="jp-footer">© JP 타임즈</footer>
 
   <script>
     (async function () {
-      var params = new URLSearchParams(location.search);
-      var level = params.get("level") || "elementary";
-      var issue = params.get("issue"); // ✅ 이제 issue 기반으로 데이터 로드
-      var seq = parseInt(params.get("seq") || "1", 10);
+      const params = new URLSearchParams(location.search);
+      const level = params.get("level") || "elementary";
+      const issue = params.get("issue");
+      const seq = parseInt(params.get("seq") || "1", 10);
 
-      var levelLabel = { elementary: "초등", middle: "중등", high: "고등" }[level] || level;
+      const levelLabel = { elementary: "초등", middle: "중등", high: "고등" }[level] || level;
       document.getElementById("levelTag").textContent = levelLabel;
 
+      const root = document.getElementById("pageRoot");
+      root.setAttribute("data-level", level);
+
       function getTitle(a, lv) {
-        return a && a.title && typeof a.title === "object" ? a.title[lv] : (a ? a.title : "");
+        if (!a) return "";
+        if (a.title && typeof a.title === "object") return a.title[lv] || "";
+        if (typeof a.title === "string") return a.title;
+        return "";
       }
       function getBody(a, lv) {
-        return a && a.body && typeof a.body === "object" ? a.body[lv] : (a ? a.body : "");
+        if (!a) return "";
+        if (a.body && typeof a.body === "object") return a.body[lv] || "";
+        if (typeof a.body === "string") return a.body;
+        return "";
       }
       function getImg(a, lv) {
         if (!a) return "";
-        if (a.image && typeof a.image === "object" && a.image[lv]) return a.image[lv];
-        if (a.image && typeof a.image === "string") return a.image;
+        if (a.image && typeof a.image === "object") return a.image[lv] || "";
+        if (typeof a.image === "string") return a.image;
         return "";
       }
       function getAlt(a, lv, fallback) {
         if (!a) return fallback || "";
-        if (a.imageAlt && typeof a.imageAlt === "object" && a.imageAlt[lv]) return a.imageAlt[lv];
+        if (a.imageAlt && typeof a.imageAlt === "object") return a.imageAlt[lv] || fallback || "";
         if (typeof a.imageAlt === "string") return a.imageAlt;
         return fallback || "";
       }
 
       async function fetchJson(url) {
-        var r = await fetch(url, { cache: "no-store" });
+        const r = await fetch(url, { cache: "no-store" });
         if (!r.ok) throw new Error(url + " fetch failed: " + r.status);
         return await r.json();
       }
 
-      // ✅ backLink: issue/level 유지
-      var back = document.getElementById("backLink");
-      back.href = "list.html?level=" + encodeURIComponent(level) + (issue ? "&issue=" + encodeURIComponent(issue) : "");
+      // back link 유지
+      const back = document.getElementById("backLink");
+      back.href = `list.html?level=${encodeURIComponent(level)}&issue=${encodeURIComponent(issue || "")}`;
 
-      // issue가 있으면 issue JSON에서 로드
-      var issueData = null;
-      var articles = null;
-
-      if (issue) {
-        try {
-          issueData = await fetchJson("data/issues/" + issue + ".json");
-          articles = issueData.ARTICLES || issueData.articles || null;
-        } catch (e) {
-          console.error(e);
-          // 아래에서 에러 화면 처리
-        }
-      }
-
-      if (!articles || typeof articles !== "object") {
-        // ❗ issue 기반 데이터가 없으면 안내
+      if (!issue) {
         document.getElementById("articleImgWrap").style.display = "none";
-        document.getElementById("dateMeta").textContent = "";
-        document.getElementById("articleTitle").textContent = "기사 데이터를 불러오지 못했습니다.";
-        document.getElementById("articleBody").innerHTML =
-          '<p>목록으로 돌아가서 다시 선택해 주세요.</p>' +
-          '<p><a href="' + back.href + '">목록으로</a></p>';
+        document.getElementById("articleTitle").textContent = "호수 정보가 없습니다.";
+        document.getElementById("articleBody").innerHTML = `<p><a href="${back.href}">목록으로</a></p>`;
         document.getElementById("articleKeywords").style.display = "none";
         document.getElementById("articleNav").style.display = "none";
         return;
       }
 
-      // ✅ seq 목록
-      var seqs = Object.keys(articles)
-        .map(Number)
-        .filter(function (n) { return !isNaN(n); })
-        .sort(function (a, b) { return a - b; });
+      let issueData;
+      try {
+        issueData = await fetchJson(`data/issues/${issue}.json`);
+      } catch (e) {
+        console.error(e);
+        document.getElementById("articleImgWrap").style.display = "none";
+        document.getElementById("articleTitle").textContent = "호수 데이터를 불러오지 못했습니다.";
+        document.getElementById("articleBody").innerHTML = `<p><a href="${back.href}">목록으로</a></p>`;
+        document.getElementById("articleKeywords").style.display = "none";
+        document.getElementById("articleNav").style.display = "none";
+        return;
+      }
 
-      var current = articles[String(seq)] || articles[seq];
+      const articles = issueData.ARTICLES || issueData.articles || {};
+      const seqs = Object.keys(articles).map(Number).filter(n=>!Number.isNaN(n)).sort((a,b)=>a-b);
+
+      const current = articles[String(seq)] || articles[seq];
+      document.getElementById("dateMeta").textContent = issueData.date || "";
 
       if (!current) {
         document.getElementById("articleImgWrap").style.display = "none";
-        document.getElementById("dateMeta").textContent = issueData && issueData.date ? issueData.date : "";
         document.getElementById("articleTitle").textContent = "해당 기사를 찾을 수 없습니다.";
-        document.getElementById("articleBody").innerHTML =
-          '<p>목록으로 돌아가서 다시 선택해 주세요.</p>' +
-          '<p><a href="' + back.href + '">목록으로</a></p>';
+        document.getElementById("articleBody").innerHTML = `<p><a href="${back.href}">목록으로</a></p>`;
         document.getElementById("articleKeywords").style.display = "none";
         document.getElementById("articleNav").style.display = "none";
         return;
       }
 
-      // ✅ 본문 표시
-      document.getElementById("dateMeta").textContent = issueData && issueData.date ? issueData.date : "";
+      const titleText = getTitle(current, level) || `기사 ${seq}`;
+      const bodyHtml = getBody(current, level) || "";
 
-      var titleText = getTitle(current, level) || ("기사 " + seq);
-      var bodyHtml = getBody(current, level) || "";
+      const imgWrap = document.getElementById("articleImgWrap");
+      const imgEl = document.getElementById("articleImg");
+      let imgSrc = getImg(current, level);
 
-      var imgWrap = document.getElementById("articleImgWrap");
-      var imgEl = document.getElementById("articleImg");
-      var imgSrc = getImg(current, level);
+      if (!imgSrc) {
+        const defaults = {
+          elementary: "images/default-elementary.jpg",
+          middle: "images/default-middle.jpg",
+          high: "images/default-high.jpg",
+        };
+        imgSrc = defaults[level] || "";
+      }
 
       if (imgSrc) {
         imgWrap.style.display = "";
         imgEl.src = imgSrc;
         imgEl.alt = getAlt(current, level, titleText);
+        imgEl.addEventListener("error", () => { imgWrap.style.display = "none"; });
       } else {
         imgWrap.style.display = "none";
       }
 
       document.getElementById("articleTitle").textContent = titleText;
       document.getElementById("articleBody").innerHTML = bodyHtml;
-      document.title = titleText + " · JP 타임즈";
+      document.title = `${titleText} · JP 타임즈`;
 
-      // ✅ 키워드(없으면 숨김)
-      var keywords = current.keywords;
-      var listEl = document.getElementById("keywordsList");
-      var keywordCount = { elementary: 5, middle: 7, high: 9 };
-      var count = keywordCount[level] || 5;
+      // 키워드
+      const keywords = current.keywords;
+      const listEl = document.getElementById("keywordsList");
+      const keywordCount = { elementary: 5, middle: 7, high: 9 };
+      const count = keywordCount[level] || 5;
 
-      if (Array.isArray(keywords) && keywords.length && listEl) {
-        var show = keywords.slice(0, count);
-        listEl.innerHTML = show.map(function (k) {
-          var meaning = k.meaning ? '<span class="keyword-meaning">' + k.meaning + "</span>" : "";
-          var ex = k.example ? '<p class="keyword-example-line">예문 : <span class="keyword-example">' + k.example + "</span></p>" : "";
-          return (
-            '<div class="keyword-item">' +
-              '<p class="keyword-line"><span class="keyword-word">' + (k.word || "") + "</span>" +
-              (meaning ? " : " + meaning : "") +
-              "</p>" +
-              ex +
-            "</div>"
-          );
+      if (Array.isArray(keywords) && keywords.length) {
+        listEl.innerHTML = keywords.slice(0, count).map((k) => {
+          const meaning = k.meaning ? `<span class="keyword-meaning">${k.meaning}</span>` : "";
+          const ex = k.example ? `<p class="keyword-example-line">예문 : <span class="keyword-example">${k.example}</span></p>` : "";
+          return `<div class="keyword-item">
+            <p class="keyword-line"><span class="keyword-word">${k.word || ""}</span>${meaning ? " : " + meaning : ""}</p>
+            ${ex}
+          </div>`;
         }).join("");
       } else {
         document.getElementById("articleKeywords").style.display = "none";
       }
 
-      // ✅ 이전/다음(같은 issue 안에서)
-      var idx = seqs.indexOf(seq);
-      var prevSeq = idx > 0 ? seqs[idx - 1] : null;
-      var nextSeq = idx >= 0 && idx < seqs.length - 1 ? seqs[idx + 1] : null;
+      // 이전/다음
+      const idx = seqs.indexOf(seq);
+      const prevSeq = idx > 0 ? seqs[idx - 1] : null;
+      const nextSeq = idx >= 0 && idx < seqs.length - 1 ? seqs[idx + 1] : null;
 
-      var prevLink = document.getElementById("prevArticle");
-      var nextLink = document.getElementById("nextArticle");
-      var navEl = document.getElementById("articleNav");
+      const prevLink = document.getElementById("prevArticle");
+      const nextLink = document.getElementById("nextArticle");
+      const navEl = document.getElementById("articleNav");
 
       function makeHref(s) {
-        return (
-          "article.html?level=" + encodeURIComponent(level) +
-          "&issue=" + encodeURIComponent(issue) +
-          "&seq=" + encodeURIComponent(String(s))
-        );
+        return `article.html?level=${encodeURIComponent(level)}&issue=${encodeURIComponent(issue)}&seq=${encodeURIComponent(String(s))}`;
       }
 
       if (prevSeq != null) {
-        var prevA = articles[String(prevSeq)] || articles[prevSeq];
+        const prevA = articles[String(prevSeq)] || articles[prevSeq];
         prevLink.href = makeHref(prevSeq);
-        prevLink.innerHTML =
-          '<span class="article-nav-label">← 이전 기사</span>' +
-          '<span class="article-nav-title">' + (getTitle(prevA, level) || "") + "</span>";
+        prevLink.innerHTML = `<span class="article-nav-label">← 이전 기사</span><span class="article-nav-title">${getTitle(prevA, level) || ""}</span>`;
         prevLink.style.display = "";
-      } else {
-        prevLink.style.display = "none";
-      }
+      } else prevLink.style.display = "none";
 
       if (nextSeq != null) {
-        var nextA = articles[String(nextSeq)] || articles[nextSeq];
+        const nextA = articles[String(nextSeq)] || articles[nextSeq];
         nextLink.href = makeHref(nextSeq);
-        nextLink.innerHTML =
-          '<span class="article-nav-label">다음 기사 →</span>' +
-          '<span class="article-nav-title">' + (getTitle(nextA, level) || "") + "</span>";
+        nextLink.innerHTML = `<span class="article-nav-label">다음 기사 →</span><span class="article-nav-title">${getTitle(nextA, level) || ""}</span>`;
         nextLink.style.display = "";
-      } else {
-        nextLink.style.display = "none";
-      }
+      } else nextLink.style.display = "none";
 
-      navEl.classList.remove("article-nav-prev-only", "article-nav-next-only");
-      if (prevSeq == null && nextSeq != null) navEl.classList.add("article-nav-next-only");
-      else if (prevSeq != null && nextSeq == null) navEl.classList.add("article-nav-prev-only");
+      if (prevSeq == null && nextSeq == null) navEl.style.display = "none";
     })();
   </script>
 </body>

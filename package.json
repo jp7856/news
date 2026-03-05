@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "migrate:legacy": "node scripts/migrate-legacy-to-issue.cjs",
     "weekly": "node scripts/generate-weekly.js",
     "generate:weekly-issue": "node scripts/generate-weekly.js"
   },

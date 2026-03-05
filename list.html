@@ -1,115 +1,207 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JP 타임즈</title>
-
-<link rel="stylesheet" href="css/style.css">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>JP 타임즈 · 주간 기사 읽기</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
+  <header class="jp-header">
+    <div class="jp-header-inner">
+      <div class="jp-brand">JP 타임즈</div>
+      <div class="jp-sub">주간 기사 읽기</div>
+    </div>
+  </header>
 
-<header class="jp-header">
-<div class="jp-brand">JP 타임즈</div>
-<div class="jp-sub">주간 기사 읽기</div>
-</header>
+  <main class="jp-wrap" id="pageRoot">
+    <a href="index.html" class="jp-back">← 메인으로</a>
 
+    <div class="jp-controls">
+      <label class="jp-label" for="issueSelect">호수</label>
+      <select id="issueSelect" class="jp-select" aria-label="호수 선택"></select>
+      <span id="listMessage" class="jp-msg" aria-live="polite"></span>
+    </div>
 
-<main class="jp-wrap">
+    <h1 id="levelTitle" class="jp-title">초등 기사</h1>
+    <div id="titleLine" class="jp-title-line"></div>
 
-<a href="index.html" class="jp-back">← 메인으로</a>
+    <section class="jp-grid" id="articleList" aria-label="기사 목록"></section>
+  </main>
 
-<h1 id="levelTitle" class="jp-title"></h1>
+  <footer class="jp-footer">© JP 타임즈</footer>
 
-<div id="articleList" class="jp-grid"></div>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(location.search);
+      const level = params.get("level") || "elementary";
+      const issueParam = params.get("issue");
 
-</main>
+      const levelUi = {
+        elementary: { title: "초등 기사", theme: "elementary", byline: "JP 타임즈 · 초등", max: 5 },
+        middle:     { title: "중등 기사", theme: "middle",     byline: "JP 타임즈 · 중등", max: 8 },
+        high:       { title: "고등 기사", theme: "high",       byline: "JP 타임즈 · 고등", max: 12 },
+      };
+      const ui = levelUi[level] || levelUi.elementary;
 
+      const root = document.getElementById("pageRoot");
+      root.setAttribute("data-level", ui.theme);
 
-<footer class="jp-footer">
-© JP 타임즈
-</footer>
+      const levelTitle = document.getElementById("levelTitle");
+      const titleLine = document.getElementById("titleLine");
+      levelTitle.textContent = ui.title;
+      levelTitle.className = "jp-title jp-title--" + ui.theme;
+      titleLine.className = "jp-title-line jp-title-line--" + ui.theme;
 
+      const issueSelect = document.getElementById("issueSelect");
+      const msg = document.getElementById("listMessage");
+      const list = document.getElementById("articleList");
 
-<script src="js/articles.js"></script>
+      function setMsg(t) { msg.textContent = t || ""; }
+      function esc(s){ return String(s||"").replace(/[<>&"]/g,c=>({ "<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;" }[c])); }
 
-<script>
+      async function fetchJson(url) {
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) throw new Error(url + " fetch failed: " + r.status);
+        return await r.json();
+      }
 
-const params = new URLSearchParams(location.search);
-const level = params.get("level") || "elementary";
+      function getTitle(a, lv) {
+        if (!a) return "";
+        if (a.title && typeof a.title === "object") return a.title[lv] || "";
+        if (typeof a.title === "string") return a.title;
+        return "";
+      }
+      function getImg(a, lv) {
+        if (!a) return "";
+        if (a.image && typeof a.image === "object") return a.image[lv] || "";
+        if (typeof a.image === "string") return a.image;
+        return "";
+      }
+      function attachImgErrorHandler(imgEl) {
+        imgEl.addEventListener("error", function () {
+          const wrap = imgEl.closest(".jp-card-thumb");
+          if (wrap) wrap.classList.add("jp-card-thumb--empty");
+          imgEl.remove();
+        });
+      }
 
-const levelTitleMap = {
-elementary: "초등 기사",
-middle: "중등 기사",
-high: "고등 기사"
-};
+      // 1) issues index 로드
+      let issues = [];
+      try {
+        issues = await fetchJson("data/issues.json"); // [{issue, date}, ...]
+      } catch (e) {
+        console.error(e);
+        setMsg("호수 목록 로드 실패: data/issues.json");
+        return;
+      }
 
-const maxByLevel = {
-elementary: 5,
-middle: 8,
-high: 12
-};
+      issueSelect.innerHTML = "";
+      issues.forEach((it) => {
+        const opt = document.createElement("option");
+        opt.value = String(it.issue);
+        opt.textContent = `${it.issue}호 (${it.date})`;
+        issueSelect.appendChild(opt);
+      });
 
-document.getElementById("levelTitle").innerText = levelTitleMap[level];
+      // 2) issue 선택
+      if (issueParam && Array.from(issueSelect.options).some(o => o.value === issueParam)) {
+        issueSelect.value = issueParam;
+      } else {
+        issueSelect.value = issueSelect.options[0]?.value || "";
+      }
 
-const list = document.getElementById("articleList");
+      async function renderIssue(issueNo) {
+        list.innerHTML = "";
+        setMsg("불러오는 중...");
 
-const articles = window.ARTICLES || {};
+        let issueData;
+        try {
+          issueData = await fetchJson(`data/issues/${issueNo}.json`);
+        } catch (e) {
+          console.error(e);
+          setMsg(`호수 파일 읽기 실패: data/issues/${issueNo}.json`);
+          return;
+        }
 
-const seqs = Object.keys(articles)
-.map(Number)
-.sort((a,b)=>a-b);
+        const articles = issueData.ARTICLES || issueData.articles || {};
+        const dateLabel = issueData.date || "";
+        const issueLabel = `제${issueNo}호_${dateLabel}`;
 
-let count = 0;
+        const seqs = Object.keys(articles).map(Number).filter(n=>!Number.isNaN(n)).sort((a,b)=>a-b);
 
-for(const seq of seqs){
+        // 레벨별로 title 있는 것만 골라서 max개 표시
+        const picked = [];
+        for (const seq of seqs) {
+          const a = articles[String(seq)] || articles[seq];
+          if (!getTitle(a, level)) continue;
+          picked.push(seq);
+          if (picked.length >= ui.max) break;
+        }
 
-const a = articles[seq];
-if(!a) continue;
+        if (!picked.length) {
+          setMsg("표시할 기사가 없습니다.");
+          return;
+        }
+        setMsg("");
 
-const title = a.title[level];
-if(!title) continue;
+        for (const seq of picked) {
+          const a = articles[String(seq)] || articles[seq];
+          const title = getTitle(a, level) || `기사 ${seq}`;
+          let img = getImg(a, level);
 
-const img = a.image[level] || "";
+          // ✅ 기본 이미지 fallback (원하면 파일 3개 만들어두기)
+          if (!img) {
+            const defaults = {
+              elementary: "images/default-elementary.jpg",
+              middle: "images/default-middle.jpg",
+              high: "images/default-high.jpg",
+            };
+            img = defaults[level] || "";
+          }
 
-const card = document.createElement("a");
-card.className = "jp-card";
+          const card = document.createElement("a");
+          card.className = "jp-card";
+          card.href = `article.html?level=${encodeURIComponent(level)}&issue=${encodeURIComponent(issueNo)}&seq=${encodeURIComponent(String(seq))}`;
 
-card.href = `article.html?seq=${seq}&level=${level}`;
+          const thumb = document.createElement("div");
+          thumb.className = "jp-card-thumb" + (img ? "" : " jp-card-thumb--empty");
+          if (img) {
+            const im = document.createElement("img");
+            im.src = img;
+            im.alt = "";
+            im.loading = "lazy";
+            attachImgErrorHandler(im);
+            thumb.appendChild(im);
+          }
 
-card.innerHTML = `
+          const body = document.createElement("div");
+          body.className = "jp-card-body";
+          body.innerHTML =
+            `<div class="jp-card-issue">${esc(issueLabel)}</div>` +
+            `<div class="jp-card-title">${esc(title)}</div>` +
+            `<div class="jp-card-byline">${esc(ui.byline)}</div>`;
 
-<div class="jp-card-thumb">
-<img src="${img}" loading="lazy">
-</div>
+          card.appendChild(thumb);
+          card.appendChild(body);
+          list.appendChild(card);
+        }
+      }
 
-<div class="jp-card-body">
+      issueSelect.addEventListener("change", function () {
+        const issueNo = issueSelect.value;
+        const u = new URL(location.href);
+        u.searchParams.set("level", level);
+        u.searchParams.set("issue", issueNo);
+        history.replaceState(null, "", u.toString());
+        renderIssue(issueNo);
+      });
 
-<div class="jp-card-issue">JP 타임즈</div>
-
-<div class="jp-card-title">
-${title}
-</div>
-
-<div class="jp-card-byline">
-JP 타임즈 · ${level}
-</div>
-
-</div>
-
-`;
-
-list.appendChild(card);
-
-count++;
-
-if(count>=maxByLevel[level]) break;
-
-}
-
-</script>
-
+      if (issueSelect.value) await renderIssue(issueSelect.value);
+      else setMsg("호수가 없습니다.");
+    })();
+  </script>
 </body>
 </html>

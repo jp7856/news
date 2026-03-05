@@ -300,3 +300,16 @@
   .jp-card-title{ color: var(--jp-text); }
   .jp-footer{ border-top:1px solid #111827; color: var(--jp-muted); }
 }
+
+@media (prefers-color-scheme: dark) {
+  body { background:#0b0f14; color:#e5e7eb; }
+  .jp-header { background:#0b0f14; border-bottom:1px solid #111827; }
+  .jp-wrap { background:#0b0f14; }
+  .jp-sub { color:#9ca3af; }
+  .jp-back { color:#cbd5e1; }
+  .jp-select { background:#0b0f14; color:#e5e7eb; border-color:#273244; }
+  .jp-card { background:#0b0f14; border-color:#111827; box-shadow:0 1px 3px rgba(0,0,0,.35); }
+  .jp-card-title { color:#f3f4f6; }
+  .jp-card-byline, .jp-card-issue, .jp-footer { color:#9ca3af; }
+  .jp-footer { border-top:1px solid #111827; }
+}
