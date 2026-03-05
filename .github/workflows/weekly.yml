@@ -1,32 +1,73 @@
-name: Weekly JP Times
+name: generate
 
 on:
-  schedule:
-    - cron: "0 0 * * 1"
   workflow_dispatch:
+  schedule:
+    # 매주 월요일 09:00 KST = 00:00 UTC (예시)
+    - cron: "0 0 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-issue-main
+  cancel-in-progress: false
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          node-version: "20"
+          fetch-depth: 0  # pull/rebase 위해 전체 히스토리 필요
 
-      - run: npm install
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
+      - name: Install
+        run: npm ci
+
+      # ✅ 여기 명령은 "프로젝트에서 실제로 weekly issue 생성하는 명령"으로 교체하세요
       - name: Generate weekly issue
-        run: node scripts/generate-weekly.js
-
-      - name: Commit & push
         run: |
+          npm run generate:weekly-issue
+
+      # ✅ 충돌/동시 실행/원격 변경 때문에 push가 rejected 되는 문제 해결
+      - name: Commit & push
+        shell: bash
+        run: |
+          set -e
+
           git config user.name "jp-times-bot"
           git config user.email "jp-times-bot@users.noreply.github.com"
-          git add data/
-          git commit -m "chore: weekly issue" || exit 0
-          git push
+
+          # 변경사항 없으면 종료
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: weekly issue"
+
+          # 원격 변경을 반영하고 push (충돌 시 재시도)
+          for i in 1 2 3; do
+            echo "Attempt $i: pull --rebase then push"
+            git pull --rebase --autostash origin main || true
+
+            if git push origin main; then
+              echo "Push succeeded."
+              exit 0
+            fi
+
+            echo "Push failed, retrying after short wait..."
+            sleep 2
+          done
+
+          echo "Push failed after 3 attempts."
+          exit 1
