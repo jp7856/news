@@ -138,8 +138,19 @@ async function main() {
     }
   }
 
-  const topics = pickHotTopics(items, 5);
-  const payload = await generateArticlesPayload({ topics, issueNo: nextIssue, dateStr });
+  const topics = pickHotTopics(items, 12);
+  const payload = await generateArticlesPayload({ topics, issueNo: nextIssue, dateStr }); const fallback = [
+    "경제", "정치", "사회", "국제", "과학", "기술",
+    "교육", "문화", "연예", "스포츠", "환경", "건강"
+  ];
+  
+  
+  let topics = pickHotTopics(items, 12);
+  while (topics.length < 12) {
+    const t = fallback[topics.length];
+    topics.push({ topic: t, score: 0 });
+  }
+  topics = topics.slice(0, 12);
 
   // 4) 파일 저장
   const issueFile = path.join(ISSUES_DIR, `${nextIssue}.json`);
