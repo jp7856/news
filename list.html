@@ -3,96 +3,107 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
-  <meta name="theme-color" content="#2563eb" />
-  <title>기사 목록 · JP 타임즈</title>
+  <meta name="theme-color" content="#ffffff" />
+  <title>JP 타임즈 · 주간 기사 읽기</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
-  <header class="header">
-    <h1><span class="brand">JP 타임즈</span></h1>
-    <p class="tagline">기사 목록</p>
+  <header class="jp-header">
+    <div class="jp-header-inner">
+      <div class="jp-brand">JP 타임즈</div>
+      <div class="jp-sub">주간 기사 읽기</div>
+    </div>
   </header>
 
-  <main class="container">
-    <div class="list-header">
-      <a href="index.html" class="back-link">← 처음으로</a>
-      <span id="levelBadge" class="level-badge elementary">초등</span>
+  <main class="jp-wrap" id="pageRoot">
+    <a href="index.html" class="jp-back">← 메인으로</a>
+
+    <div class="jp-controls">
+      <label class="jp-label" for="issueSelect">호수</label>
+      <select id="issueSelect" class="jp-select" aria-label="호수 선택"></select>
+      <span id="listMessage" class="jp-msg" aria-live="polite"></span>
     </div>
 
-    <nav class="level-nav" aria-label="단계 이동">
-      <a class="level-nav-link level-nav-link--elementary" href="list.html?level=elementary">초등</a>
-      <a class="level-nav-link level-nav-link--middle" href="list.html?level=middle">중등</a>
-      <a class="level-nav-link level-nav-link--high" href="list.html?level=high">고등</a>
-    </nav>
+    <h1 id="levelTitle" class="jp-title jp-title--elementary">초등 기사</h1>
+    <div id="titleLine" class="jp-title-line jp-title-line--elementary"></div>
 
-    <div class="issue-selector">
-      <label for="issueSelect">호수</label>
-      <select id="issueSelect" aria-label="호수 선택"></select>
-      <span id="listMessage" style="margin-left:.5rem;font-size:.85rem;color:#5f6368;"></span>
-    </div>
-
-    <section class="list-section">
-      <h2 id="listSectionTitle" class="list-section-title">기사 목록</h2>
-      <div id="articleList" class="article-grid" role="list"></div>
-    </section>
+    <section class="jp-grid" id="articleList" aria-label="기사 목록"></section>
   </main>
 
-  <footer class="footer"><p>© JP 타임즈</p></footer>
+  <footer class="jp-footer">© JP 타임즈</footer>
 
-  <script src="js/app.js"></script>
   <script>
     (async function () {
-      var params = new URLSearchParams(location.search);
-      var level = params.get("level") || "elementary";
+      const params = new URLSearchParams(location.search);
+      const level = params.get("level") || "elementary";
 
-      var titles = { elementary: "초등 기사", middle: "중등 기사", high: "고등 기사" };
-      var titleClass = {
-        elementary: "list-section-title--elementary",
-        middle: "list-section-title--middle",
-        high: "list-section-title--high",
+      // 단계별 UI 세팅 (스샷 느낌: 초록/주황/파랑)
+      const levelUi = {
+        elementary: { title: "초등 기사", theme: "elementary" },
+        middle: { title: "중등 기사", theme: "middle" },
+        high: { title: "고등 기사", theme: "high" },
       };
-      var bylines = { elementary: "JP 타임즈 · 초등", middle: "JP 타임즈 · 중등", high: "JP 타임즈 · 고등" };
-      var levelLabel = { elementary: "초등", middle: "중등", high: "고등" }[level] || level;
+      const ui = levelUi[level] || levelUi.elementary;
 
-      var sectionTitle = document.getElementById("listSectionTitle");
-      sectionTitle.textContent = titles[level] || "기사 목록";
-      sectionTitle.className = "list-section-title " + (titleClass[level] || "");
+      const root = document.getElementById("pageRoot");
+      root.setAttribute("data-level", ui.theme);
 
-      var levelBadge = document.getElementById("levelBadge");
-      levelBadge.textContent = levelLabel;
-      levelBadge.className = "level-badge " + level;
+      const levelTitle = document.getElementById("levelTitle");
+      levelTitle.textContent = ui.title;
+      levelTitle.className = "jp-title jp-title--" + ui.theme;
 
-      var list = document.getElementById("articleList");
-      list.classList.add("article-grid--" + level);
+      const titleLine = document.getElementById("titleLine");
+      titleLine.className = "jp-title-line jp-title-line--" + ui.theme;
 
-      var msg = document.getElementById("listMessage");
-      function setMsg(t) { if (msg) msg.textContent = t || ""; }
+      const issueSelect = document.getElementById("issueSelect");
+      const msg = document.getElementById("listMessage");
+      const list = document.getElementById("articleList");
 
-      function getTitle(a, lv) {
-        return a && a.title && typeof a.title === "object" ? a.title[lv] : (a ? a.title : "");
-      }
-      function getImg(a, lv) {
-        if (!a) return "";
-        if (a.image && typeof a.image === "object" && a.image[lv]) return a.image[lv];
-        if (a.image && typeof a.image === "string") return a.image;
-        return "";
-      }
+      const maxByLevel = { elementary: 5, middle: 8, high: 12 };
+      const maxCount = maxByLevel[level] || 12;
 
-      var issueSelect = document.getElementById("issueSelect");
+      function setMsg(t) { msg.textContent = t || ""; }
 
       async function fetchJson(url) {
-        var r = await fetch(url, { cache: "no-store" });
+        const r = await fetch(url, { cache: "no-store" });
         if (!r.ok) throw new Error(url + " fetch failed: " + r.status);
         return await r.json();
       }
 
+      function safeText(s) {
+        return String(s || "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+      }
+
+      function getTitle(a, lv) {
+        if (!a) return "";
+        if (a.title && typeof a.title === "object") return a.title[lv] || "";
+        if (typeof a.title === "string") return a.title;
+        return "";
+      }
+
+      function getImg(a, lv) {
+        if (!a) return "";
+        if (a.image && typeof a.image === "object") return a.image[lv] || "";
+        if (typeof a.image === "string") return a.image;
+        return "";
+      }
+
+      // ✅ 이미지 깨짐(404 등)도 “빈 썸네일”로 바꿔치기
+      function attachImgErrorHandler(imgEl) {
+        imgEl.addEventListener("error", function () {
+          const wrap = imgEl.closest(".jp-card-thumb");
+          if (wrap) wrap.classList.add("jp-card-thumb--empty");
+          imgEl.remove();
+        });
+      }
+
       // 호수 목록 로드
-      var issues;
+      let issues = [];
       try {
         issues = await fetchJson("data/issues.json"); // [{issue, date}, ...]
       } catch (e) {
@@ -101,31 +112,26 @@
         return;
       }
 
-      // 드롭다운 채우기
       issueSelect.innerHTML = "";
-      issues.forEach(function (it) {
-        var opt = document.createElement("option");
+      issues.forEach((it) => {
+        const opt = document.createElement("option");
         opt.value = String(it.issue);
-        opt.textContent = it.issue + "호 (" + it.date + ")";
+        opt.textContent = `${it.issue}호 (${it.date})`;
         issueSelect.appendChild(opt);
       });
 
-      // URL에 issue 있으면 선택
-      var issueFromUrl = params.get("issue");
-      if (issueFromUrl && Array.from(issueSelect.options).some(function (o) { return o.value === issueFromUrl; })) {
+      const issueFromUrl = params.get("issue");
+      if (issueFromUrl && Array.from(issueSelect.options).some((o) => o.value === issueFromUrl)) {
         issueSelect.value = issueFromUrl;
       } else {
         issueSelect.value = issueSelect.options[0] ? issueSelect.options[0].value : "";
       }
 
-      var maxByLevel = { elementary: 5, middle: 8, high: 12 };
-      var maxSeq = maxByLevel[level] || 12;
-
       async function renderIssue(issueNo) {
         list.innerHTML = "";
         setMsg("불러오는 중...");
 
-        var issueData;
+        let issueData;
         try {
           issueData = await fetchJson("data/issues/" + issueNo + ".json");
         } catch (e) {
@@ -134,63 +140,76 @@
           return;
         }
 
-        var articles = issueData.ARTICLES || issueData.articles || {};
-        if (!articles || typeof articles !== "object") {
-          setMsg("ARTICLES 구조가 올바르지 않습니다.");
-          return;
+        const articles = issueData.ARTICLES || issueData.articles || {};
+        const dateLabel = issueData.date || "";
+        const issueLabel = `제${issueNo}호_${dateLabel}`;
+
+        // seqs 생성
+        const seqs = Object.keys(articles)
+          .map(Number)
+          .filter((n) => !Number.isNaN(n))
+          .sort((a, b) => a - b);
+
+        // ✅ “기사수”를 단계별로 맞추기:
+        // 해당 레벨 title이 있는 기사만 카운트에 포함하고, maxCount만큼만 표시
+        const picked = [];
+        for (const seq of seqs) {
+          const a = articles[String(seq)] || articles[seq];
+          const title = getTitle(a, level);
+          if (!title) continue; // 레벨별 데이터 없는 건 제외
+          picked.push(seq);
+          if (picked.length >= maxCount) break;
         }
 
-        // ✅ 핵심: seq 목록 생성(이전 코드에 없어서 목록이 아예 안 나왔음)
-        var seqs = Object.keys(articles)
-          .map(Number)
-          .filter(function (n) { return !isNaN(n); })
-          .sort(function (a, b) { return a - b; })
-          .slice(0, maxSeq);
-
-        var dateLabel = issueData.date || "";
-        var issueLabel = "제" + issueNo + "호_" + dateLabel;
-
-        if (seqs.length === 0) {
-          setMsg("표시할 기사가 없습니다. (ARTICLES 비어있음)");
+        if (picked.length === 0) {
+          setMsg("표시할 기사가 없습니다.");
           return;
         }
 
         setMsg("");
 
-        seqs.forEach(function (seq) {
-          var a = articles[String(seq)] || articles[seq];
-          if (!a) return;
+        for (const seq of picked) {
+          const a = articles[String(seq)] || articles[seq];
+          const title = getTitle(a, level) || ("기사 " + seq);
+          const img = getImg(a, level);
 
-          var title = getTitle(a, level) || ("기사 " + seq);
-          var img = getImg(a, level);
-
-          var card = document.createElement("a");
-          card.className = "article-card";
+          const card = document.createElement("a");
+          card.className = "jp-card";
           card.href =
             "article.html?level=" + encodeURIComponent(level) +
             "&issue=" + encodeURIComponent(issueNo) +
-            "&seq=" + encodeURIComponent(seq);
+            "&seq=" + encodeURIComponent(String(seq));
 
-          var thumbHtml = img
-            ? '<span class="article-card-thumb"><img src="' + img + '" alt="" loading="lazy"></span>'
-            : '<span class="article-card-thumb article-card-thumb--empty"></span>';
+          const thumb = document.createElement("div");
+          thumb.className = "jp-card-thumb" + (img ? "" : " jp-card-thumb--empty");
 
-          card.innerHTML =
-            thumbHtml +
-            '<span class="article-card-body">' +
-            '<span class="article-card-issue">' + issueLabel + "</span>" +
-            '<span class="article-card-title">' + title + "</span>" +
-            '<span class="article-card-byline">' + (bylines[level] || "") + "</span>" +
-            "</span>";
+          if (img) {
+            const im = document.createElement("img");
+            im.src = img;
+            im.alt = "";
+            im.loading = "lazy";
+            attachImgErrorHandler(im);
+            thumb.appendChild(im);
+          }
 
+          const body = document.createElement("div");
+          body.className = "jp-card-body";
+          body.innerHTML =
+            `<div class="jp-card-issue">${safeText(issueLabel)}</div>` +
+            `<div class="jp-card-title">${safeText(title)}</div>` +
+            `<div class="jp-card-byline">JP 타임즈 · ${safeText(ui.title.replace(" 기사",""))}</div>`;
+
+          card.appendChild(thumb);
+          card.appendChild(body);
           list.appendChild(card);
-        });
+        }
       }
 
       issueSelect.addEventListener("change", function () {
-        var issueNo = issueSelect.value;
-        var u = new URL(location.href);
+        const issueNo = issueSelect.value;
+        const u = new URL(location.href);
         u.searchParams.set("issue", issueNo);
+        u.searchParams.set("level", level);
         history.replaceState(null, "", u.toString());
         renderIssue(issueNo);
       });
