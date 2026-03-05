@@ -1,137 +1,134 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
-  <meta name="theme-color" content="#2563eb">
-  <title>기사 목록 · JP 타임즈</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body class="list-page">
-  <header class="header">
-    <h1><span class="brand">JP 타임즈</span></h1>
-    <p class="tagline">주간 기사 읽기</p>
-  </header>
+<script src="js/app.js"></script>
+<script>
+(async function() {
+  var params = new URLSearchParams(location.search);
+  var level = params.get('level') || 'elementary';
 
-  <main class="container list-main">
-    <a href="index.html" class="back-link">← 메인으로</a>
+  var titles = { elementary: '초등 기사', middle: '중등 기사', high: '고등 기사' };
+  var titleClass = { elementary: 'list-section-title--elementary', middle: 'list-section-title--middle', high: 'list-section-title--high' };
+  var bylines = { elementary: 'JP 타임즈 · 초등', middle: 'JP 타임즈 · 중등', high: 'JP 타임즈 · 고등' };
 
-    <div class="issue-selector">
-      <label for="issueSelect">호수</label>
-      <select id="issueSelect" aria-label="호수 선택"></select>
-    </div>
+  var sectionTitle = document.getElementById('listSectionTitle');
+  sectionTitle.textContent = titles[level] || '기사 목록';
+  sectionTitle.className = 'list-section-title ' + (titleClass[level] || '');
 
-    <section class="list-section list-section--single">
-      <h2 class="list-section-title" id="listSectionTitle">초등 기사</h2>
-      <div class="article-grid" id="articleList"></div>
-    </section>
-  </main>
+  var list = document.getElementById('articleList');
+  list.classList.add('article-grid--' + level);
 
-  <footer class="footer"><p>© JP 타임즈</p></footer>
+  // 메시지 영역(없으면 조용히 무시)
+  var msg = document.getElementById('listMessage');
+  function setMsg(t){ if (msg) msg.textContent = t || ''; }
 
-  <script src="js/app.js"></script>
-  <script>
-  (async function() {
-    var params = new URLSearchParams(location.search);
-    var level = params.get('level') || 'elementary';
+  function getTitle(a, lv) { return a.title && typeof a.title === 'object' ? a.title[lv] : a.title; }
+  function getImg(a, lv) { return a.image && a.image[lv] ? a.image[lv] : (a.image && typeof a.image === 'string' ? a.image : ''); }
 
-    var titles = { elementary: '초등 기사', middle: '중등 기사', high: '고등 기사' };
-    var titleClass = { elementary: 'list-section-title--elementary', middle: 'list-section-title--middle', high: 'list-section-title--high' };
-    var bylines = { elementary: 'JP 타임즈 · 초등', middle: 'JP 타임즈 · 중등', high: 'JP 타임즈 · 고등' };
+  var issueSelect = document.getElementById('issueSelect');
 
-    var sectionTitle = document.getElementById('listSectionTitle');
-    sectionTitle.textContent = titles[level] || '기사 목록';
-    sectionTitle.className = 'list-section-title ' + (titleClass[level] || '');
+  async function fetchJson(url){
+    var r = await fetch(url, { cache: 'no-store' });
+    if(!r.ok) throw new Error(url + ' fetch failed: ' + r.status);
+    return await r.json();
+  }
 
-    var list = document.getElementById('articleList');
-    list.classList.add('article-grid--' + level);
+  // 호수 목록 로드
+  var issues;
+  try {
+    issues = await fetchJson('data/issues.json'); // [{issue, date}, ...]
+  } catch(e){
+    console.error(e);
+    setMsg('호수 목록 로드 실패: data/issues.json');
+    return;
+  }
 
-    function getTitle(a, lv) { return a.title && typeof a.title === 'object' ? a.title[lv] : a.title; }
-    function getImg(a, lv) { return a.image && a.image[lv] ? a.image[lv] : (a.image && typeof a.image === 'string' ? a.image : ''); }
+  // 드롭다운 채우기
+  issueSelect.innerHTML = '';
+  issues.forEach(function(it) {
+    var opt = document.createElement('option');
+    opt.value = String(it.issue);
+    opt.textContent = it.issue + '호 (' + it.date + ')';
+    issueSelect.appendChild(opt);
+  });
 
-    var issueSelect = document.getElementById('issueSelect');
+  // URL에 issue 있으면 선택
+  var issueFromUrl = params.get('issue');
+  if (issueFromUrl && Array.from(issueSelect.options).some(function(o){ return o.value === issueFromUrl; })) {
+    issueSelect.value = issueFromUrl;
+  } else {
+    issueSelect.value = issueSelect.options[0].value; // 기본값
+  }
 
-    // 호수 목록 로드
-    var issuesRes = await fetch('data/issues.json', { cache: 'no-store' });
-    var issues = await issuesRes.json(); // [{issue, date}, ...]
+  var maxByLevel = { elementary: 5, middle: 8, high: 12 };
+  var maxSeq = maxByLevel[level] || 12;
 
-    // 드롭다운 채우기(최신이 위라고 가정)
-    issues.forEach(function(it) {
-      var opt = document.createElement('option');
-      opt.value = String(it.issue);
-      opt.textContent = it.issue + '호 (' + it.date + ')';
-      issueSelect.appendChild(opt);
-    });
+  async function renderIssue(issueNo) {
+    list.innerHTML = '';
+    setMsg('불러오는 중...');
 
-    // URL에 issue 있으면 선택
-    var issueFromUrl = params.get('issue');
-    if (issueFromUrl && Array.from(issueSelect.options).some(function(o){ return o.value === issueFromUrl; })) {
-      issueSelect.value = issueFromUrl;
+    var issueData;
+    try {
+      issueData = await fetchJson('data/issues/' + issueNo + '.json');
+    } catch(e){
+      console.error(e);
+      setMsg('호수 파일이 없거나 읽기 실패: data/issues/' + issueNo + '.json');
+      return;
     }
 
-    var maxByLevel = { elementary: 5, middle: 8, high: 12 };
-    var maxSeq = maxByLevel[level] || 12;
-    var seqs = Object.keys(articles).map(Number)
-  .filter(function(n) { return !isNaN(n) && n <= maxSeq; })
-
-  
-
-    async function renderIssue(issueNo) {
-      list.innerHTML = '';
-
-      var issueRes = await fetch('data/issues/' + issueNo + '.json', { cache: 'no-store' });
-      var issueData = await issueRes.json();
-      var articles = issueData.ARTICLES || {};
-
-      var selectedOpt = issueSelect.options[issueSelect.selectedIndex];
-      var m = selectedOpt && selectedOpt.text.match(/\d{4}\.\d{2}\.\d{2}/);
-      var dateLabel = m ? m[0] : (issueData.date || '');
-      var issueLabel = '제' + issueNo + '호_' + dateLabel;
-
-      var seqs = Object.keys(articles).map(Number)
-        .filter(function(n) { return !isNaN(n) && n <= maxSeq; })
-        .sort(function(a, b) { return a - b; });
-
-      seqs.forEach(function(seq) {
-        var a = articles[seq];
-        if (!a) return;
-
-        var title = getTitle(a, level) || ('기사 ' + seq);
-        var img = getImg(a, level);
-
-        var card = document.createElement('a');
-        card.className = 'article-card';
-        card.href = 'article.html?level=' + encodeURIComponent(level) + '&issue=' + encodeURIComponent(issueNo) + '&seq=' + encodeURIComponent(seq);
-
-        var thumbHtml = img
-          ? '<span class="article-card-thumb"><img src="' + img + '" alt="" loading="lazy"></span>'
-          : '<span class="article-card-thumb article-card-thumb--empty"></span>';
-
-        card.innerHTML =
-          thumbHtml +
-          '<span class="article-card-body">' +
-            '<span class="article-card-issue">' + issueLabel + '</span>' +
-            '<span class="article-card-title">' + title + '</span>' +
-            '<span class="article-card-byline">' + bylines[level] + '</span>' +
-          '</span>';
-
-        list.appendChild(card);
-      });
+    var articles = issueData.ARTICLES || issueData.articles || {};
+    if (!articles || (typeof articles !== 'object')) {
+      setMsg('ARTICLES 구조가 올바르지 않습니다.');
+      return;
     }
 
-    issueSelect.addEventListener('change', function() {
-      var issueNo = issueSelect.value;
-      var u = new URL(location.href);
-      u.searchParams.set('issue', issueNo);
-      history.replaceState(null, '', u.toString());
-      renderIssue(issueNo);
-    });
+    var selectedOpt = issueSelect.options[issueSelect.selectedIndex];
+    var m = selectedOpt && selectedOpt.text.match(/\d{4}\.\d{2}\.\d{2}/);
+    var dateLabel = m ? m[0] : (issueData.date || '');
+    var issueLabel = '제' + issueNo + '호_' + dateLabel;
 
-    await renderIssue(issueSelect.value);
-  })();
-  </script>
-</body>
-</html>
+ 
+    if (seqs.length === 0) {
+      setMsg('표시할 기사가 없습니다. (ARTICLES 비어있음)');
+      return;
+    }
+
+    setMsg('');
+
+    seqs.forEach(function(seq) {
+      var a = articles[seq];
+      if (!a) return;
+
+      var title = getTitle(a, level) || ('기사 ' + seq);
+      var img = getImg(a, level);
+
+      var card = document.createElement('a');
+      card.className = 'article-card';
+      card.href = 'article.html?level=' + encodeURIComponent(level) +
+                  '&issue=' + encodeURIComponent(issueNo) +
+                  '&seq=' + encodeURIComponent(seq);
+
+      var thumbHtml = img
+        ? '<span class="article-card-thumb"><img src="' + img + '" alt="" loading="lazy"></span>'
+        : '<span class="article-card-thumb article-card-thumb--empty"></span>';
+
+      card.innerHTML =
+        thumbHtml +
+        '<span class="article-card-body">' +
+          '<span class="article-card-issue">' + issueLabel + '</span>' +
+          '<span class="article-card-title">' + title + '</span>' +
+          '<span class="article-card-byline">' + (bylines[level] || '') + '</span>' +
+        '</span>';
+
+      list.appendChild(card);
+    });
+  }
+
+  issueSelect.addEventListener('change', function() {
+    var issueNo = issueSelect.value;
+    var u = new URL(location.href);
+    u.searchParams.set('issue', issueNo);
+    history.replaceState(null, '', u.toString());
+    renderIssue(issueNo);
+  });
+
+  await renderIssue(issueSelect.value);
+})();
+</script>
