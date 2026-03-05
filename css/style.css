@@ -187,3 +187,88 @@
   font-weight:800;
   border-top: 1px solid var(--jp-gray-100);
 }
+
+/* ===== Difficulty-based sizing override (초/중/고 크기 차등) ===== */
+
+/* 공통 기본값(중등 기준 느낌) */
+.jp-wrap[data-level] .jp-grid{
+  gap: 16px;
+}
+.jp-wrap[data-level] .jp-card-thumb{
+  aspect-ratio: 16 / 7;
+}
+.jp-wrap[data-level] .jp-title{
+  font-size: 40px;
+}
+.jp-wrap[data-level] .jp-card-title{
+  font-size: 16px;
+}
+.jp-wrap[data-level] .jp-card-body{
+  padding: 12px 14px 14px;
+}
+
+/* ---------- 초등: 크게(여백 넉넉, 썸네일 더 큼, 제목 큼) ---------- */
+.jp-wrap[data-level="elementary"] .jp-grid{
+  gap: 18px;
+}
+.jp-wrap[data-level="elementary"] .jp-card-thumb{
+  aspect-ratio: 16 / 7.2; /* 살짝 더 높게 */
+}
+.jp-wrap[data-level="elementary"] .jp-title{
+  font-size: 42px;
+}
+.jp-wrap[data-level="elementary"] .jp-card-title{
+  font-size: 17px;
+  line-height: 1.25;
+}
+.jp-wrap[data-level="elementary"] .jp-card-body{
+  padding: 13px 15px 15px;
+}
+
+/* ---------- 중등: 중간(기본과 유사하되 약간만 컴팩트) ---------- */
+.jp-wrap[data-level="middle"] .jp-grid{
+  gap: 16px;
+}
+.jp-wrap[data-level="middle"] .jp-card-thumb{
+  aspect-ratio: 16 / 6.6; /* 초등보다 조금 낮게 */
+}
+.jp-wrap[data-level="middle"] .jp-title{
+  font-size: 40px;
+}
+.jp-wrap[data-level="middle"] .jp-card-title{
+  font-size: 16px;
+}
+.jp-wrap[data-level="middle"] .jp-card-body{
+  padding: 12px 14px 14px;
+}
+
+/* ---------- 고등: 더 촘촘(썸네일 낮게, 카드 본문/타이포 작게) ---------- */
+.jp-wrap[data-level="high"] .jp-grid{
+  gap: 14px;
+}
+.jp-wrap[data-level="high"] .jp-card-thumb{
+  aspect-ratio: 16 / 5.8; /* 더 낮게(촘촘한 느낌) */
+}
+.jp-wrap[data-level="high"] .jp-title{
+  font-size: 38px;
+}
+.jp-wrap[data-level="high"] .jp-card-issue{
+  font-size: 11px;
+}
+.jp-wrap[data-level="high"] .jp-card-title{
+  font-size: 15px;
+  line-height: 1.22;
+}
+.jp-wrap[data-level="high"] .jp-card-byline{
+  font-size: 11px;
+}
+.jp-wrap[data-level="high"] .jp-card-body{
+  padding: 10px 12px 12px;
+}
+
+/* 모바일에서도 난이도 차이 유지(단, 1열로 바뀌어도 썸네일/타이포는 차등) */
+@media (max-width: 760px){
+  .jp-wrap[data-level="elementary"] .jp-title{ font-size: 36px; }
+  .jp-wrap[data-level="middle"] .jp-title{ font-size: 34px; }
+  .jp-wrap[data-level="high"] .jp-title{ font-size: 32px; }
+}
