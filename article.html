@@ -2,10 +2,38 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>기사 읽기 · JP 타임즈</title>
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* article 전용 최소 스타일(없으면 너무 휑해져서) */
+    .article-wrap{ max-width: 980px; margin: 0 auto; padding: 18px 16px 40px; }
+    .article-meta{ color: #6b7280; font-weight: 800; font-size: 13px; margin: 10px 0 12px; display:flex; gap:10px; flex-wrap:wrap; }
+    .article-title{ font-size: 34px; font-weight: 900; line-height: 1.2; margin: 6px 0 14px; letter-spacing:-0.6px; }
+    .article-img{ border-radius: 18px; overflow:hidden; border:1px solid var(--jp-gray-100); background: var(--jp-gray-100); }
+    .article-img img{ width:100%; height:auto; display:block; }
+    .article-body{ font-size: 16px; line-height: 1.75; color: var(--jp-text); }
+    .article-body p{ margin: 0 0 14px; }
+    .article-note{
+      margin: 18px 0; padding: 12px 14px; border-radius: 14px;
+      border:1px solid var(--jp-gray-100); background: #fff;
+      color:#374151; font-weight:800;
+    }
+    .links{ margin-top: 18px; }
+    .links h2{ font-size: 16px; font-weight: 900; margin: 0 0 10px; }
+    .links a{ display:block; margin: 8px 0; font-weight: 800; }
+    .nav-links{ display:flex; justify-content:space-between; gap:12px; margin-top: 28px; }
+    .nav-links a{ flex:1; padding: 12px 14px; border-radius: 14px; border:1px solid var(--jp-gray-100); background:#fff; text-decoration:none; color: var(--jp-text); font-weight:900; }
+    .nav-links a:empty{ display:none; }
+    @media (max-width:760px){
+      .article-title{ font-size: 28px; }
+      .nav-links{ flex-direction:column; }
+    }
+    @media (prefers-color-scheme: dark){
+      .article-note,.nav-links a{ background:#0b0f14; border-color:#111827; color: var(--jp-text); }
+      .article-img{ border-color:#111827; background:#111827; }
+    }
+  </style>
 </head>
 
 <body>
@@ -16,32 +44,29 @@
     </div>
   </header>
 
-  <main class="jp-wrap" id="pageRoot">
+  <main class="article-wrap jp-wrap" id="pageRoot">
     <a href="#" id="backLink" class="jp-back">← 목록으로</a>
 
-    <article class="article-detail">
-      <div class="article-img-wrap" id="articleImgWrap">
-        <img id="articleImg" src="" alt="" />
-      </div>
+    <div id="meta" class="article-meta"></div>
+    <h1 id="title" class="article-title"></h1>
 
-      <div class="meta">
-        <span id="levelTag" class="level-tag"></span>
-        <span id="dateMeta"></span>
-      </div>
+    <div id="imgWrap" class="article-img" style="display:none;">
+      <img id="img" alt="" />
+    </div>
 
-      <h1 id="articleTitle"></h1>
-      <div class="body" id="articleBody"></div>
+    <div id="body" class="article-body" style="margin-top:16px;"></div>
 
-      <section class="article-keywords" id="articleKeywords" aria-label="핵심 키워드">
-        <h2 class="keywords-title">핵심 키워드</h2>
-        <div class="keywords-list" id="keywordsList"></div>
-      </section>
-    </article>
+    <div id="note" class="article-note" style="display:none;"></div>
 
-    <nav class="article-nav" id="articleNav" aria-label="이전·다음 기사">
-      <a href="#" id="prevArticle" class="article-nav-link article-nav-prev"></a>
-      <a href="#" id="nextArticle" class="article-nav-link article-nav-next"></a>
-    </nav>
+    <div id="linksWrap" class="links" style="display:none;">
+      <h2>출처 링크</h2>
+      <div id="links"></div>
+    </div>
+
+    <div class="nav-links" id="nav">
+      <a id="prev" href=""></a>
+      <a id="next" href=""></a>
+    </div>
   </main>
 
   <footer class="jp-footer">© JP 타임즈</footer>
@@ -51,162 +76,184 @@
       const params = new URLSearchParams(location.search);
       const level = params.get("level") || "elementary";
       const issue = params.get("issue");
-      const seq = parseInt(params.get("seq") || "1", 10);
+      const seq = Number(params.get("seq") || "1");
 
-      const levelLabel = { elementary: "초등", middle: "중등", high: "고등" }[level] || level;
-      document.getElementById("levelTag").textContent = levelLabel;
+      const levelLabel = { elementary:"초등", middle:"중등", high:"고등" }[level] || level;
+
+      const backLink = document.getElementById("backLink");
+      backLink.href = `list.html?level=${encodeURIComponent(level)}&issue=${encodeURIComponent(issue || "")}`;
 
       const root = document.getElementById("pageRoot");
       root.setAttribute("data-level", level);
 
-      function getTitle(a, lv) {
-        if (!a) return "";
-        if (a.title && typeof a.title === "object") return a.title[lv] || "";
-        if (typeof a.title === "string") return a.title;
-        return "";
-      }
-      function getBody(a, lv) {
-        if (!a) return "";
-        if (a.body && typeof a.body === "object") return a.body[lv] || "";
-        if (typeof a.body === "string") return a.body;
-        return "";
-      }
-      function getImg(a, lv) {
-        if (!a) return "";
-        if (a.image && typeof a.image === "object") return a.image[lv] || "";
-        if (typeof a.image === "string") return a.image;
-        return "";
-      }
-      function getAlt(a, lv, fallback) {
-        if (!a) return fallback || "";
-        if (a.imageAlt && typeof a.imageAlt === "object") return a.imageAlt[lv] || fallback || "";
-        if (typeof a.imageAlt === "string") return a.imageAlt;
-        return fallback || "";
-      }
+      const elMeta = document.getElementById("meta");
+      const elTitle = document.getElementById("title");
+      const elBody = document.getElementById("body");
+      const elNote = document.getElementById("note");
+      const imgWrap = document.getElementById("imgWrap");
+      const imgEl = document.getElementById("img");
+      const linksWrap = document.getElementById("linksWrap");
+      const linksEl = document.getElementById("links");
 
-      async function fetchJson(url) {
+      function esc(s){ return String(s||"").replace(/[<>&"]/g,c=>({ "<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;" }[c])); }
+
+      async function fetchJson(url){
         const r = await fetch(url, { cache: "no-store" });
         if (!r.ok) throw new Error(url + " fetch failed: " + r.status);
         return await r.json();
       }
 
-      // back link 유지
-      const back = document.getElementById("backLink");
-      back.href = `list.html?level=${encodeURIComponent(level)}&issue=${encodeURIComponent(issue || "")}`;
+      function pickByLevel(obj, lv){
+        if (!obj) return "";
+        if (typeof obj === "string") return obj;
+        if (typeof obj === "object") return obj[lv] || obj.elementary || obj.middle || obj.high || "";
+        return "";
+      }
 
-      if (!issue) {
-        document.getElementById("articleImgWrap").style.display = "none";
-        document.getElementById("articleTitle").textContent = "호수 정보가 없습니다.";
-        document.getElementById("articleBody").innerHTML = `<p><a href="${back.href}">목록으로</a></p>`;
-        document.getElementById("articleKeywords").style.display = "none";
-        document.getElementById("articleNav").style.display = "none";
+      // ✅ 본문 후보들을 순서대로 찾아서 채움 (교육기사 + 자동뉴스 모두 대응)
+      function getBestBody(a, lv){
+        const candidates = [
+          pickByLevel(a?.body, lv),
+          pickByLevel(a?.content, lv),
+          pickByLevel(a?.text, lv),
+          pickByLevel(a?.summary, lv),
+          pickByLevel(a?.description, lv),
+        ].map(s => (typeof s === "string" ? s.trim() : "")).filter(Boolean);
+
+        if (candidates.length) return candidates[0];
+
+        // 자동뉴스에 흔한 형태: a.hotIssue / a.topic / a.reason / a.score / a.sourceName 등
+        const topic = a?.topic || a?.hotIssue || a?.headline || "";
+        const source = a?.source || a?.sourceName || "";
+        const reason = a?.reason || a?.why || "";
+        const score = (a?.score != null) ? String(a.score) : "";
+
+        const parts = [];
+        if (topic) parts.push(`이번 주 이슈: <b>${esc(topic)}</b>`);
+        if (source) parts.push(`출처: <b>${esc(source)}</b>`);
+        if (score) parts.push(`점수: <b>${esc(score)}</b>`);
+        if (reason) parts.push(esc(reason));
+
+        if (parts.length) return `<p>${parts.join("<br/>")}</p>`;
+
+        return "";
+      }
+
+      function getTitle(a, lv){
+        const t = pickByLevel(a?.title, lv).trim();
+        if (t) return t;
+        // 자동뉴스 대체
+        return (a?.topic || a?.hotIssue || a?.headline || a?.name || `기사 ${seq}`).toString();
+      }
+
+      function getImage(a, lv){
+        return pickByLevel(a?.image, lv).trim();
+      }
+
+      function getLinks(a){
+        // 가능한 링크 형태들 대응
+        if (Array.isArray(a?.links)) return a.links;
+        if (Array.isArray(a?.sources)) return a.sources;
+        if (typeof a?.url === "string") return [a.url];
+        if (typeof a?.sourceUrl === "string") return [a.sourceUrl];
+        return [];
+      }
+
+      if (!issue){
+        elTitle.textContent = "호수 정보가 없습니다.";
+        elBody.innerHTML = `<p><a href="${backLink.href}">목록으로</a></p>`;
+        document.getElementById("nav").style.display = "none";
         return;
       }
 
       let issueData;
-      try {
+      try{
         issueData = await fetchJson(`data/issues/${issue}.json`);
-      } catch (e) {
-        console.error(e);
-        document.getElementById("articleImgWrap").style.display = "none";
-        document.getElementById("articleTitle").textContent = "호수 데이터를 불러오지 못했습니다.";
-        document.getElementById("articleBody").innerHTML = `<p><a href="${back.href}">목록으로</a></p>`;
-        document.getElementById("articleKeywords").style.display = "none";
-        document.getElementById("articleNav").style.display = "none";
+      }catch(e){
+        elTitle.textContent = "호수 데이터를 불러오지 못했습니다.";
+        elBody.innerHTML = `<p><a href="${backLink.href}">목록으로</a></p>`;
+        document.getElementById("nav").style.display = "none";
         return;
       }
 
       const articles = issueData.ARTICLES || issueData.articles || {};
-      const seqs = Object.keys(articles).map(Number).filter(n=>!Number.isNaN(n)).sort((a,b)=>a-b);
+      const a = articles[String(seq)] || articles[seq];
 
-      const current = articles[String(seq)] || articles[seq];
-      document.getElementById("dateMeta").textContent = issueData.date || "";
+      elMeta.innerHTML = `<span>${esc(levelLabel)} ${esc(issueData.date || "")}</span><span>·</span><span>제${esc(issue)}호</span>`;
 
-      if (!current) {
-        document.getElementById("articleImgWrap").style.display = "none";
-        document.getElementById("articleTitle").textContent = "해당 기사를 찾을 수 없습니다.";
-        document.getElementById("articleBody").innerHTML = `<p><a href="${back.href}">목록으로</a></p>`;
-        document.getElementById("articleKeywords").style.display = "none";
-        document.getElementById("articleNav").style.display = "none";
+      if (!a){
+        elTitle.textContent = "해당 기사를 찾을 수 없습니다.";
+        elBody.innerHTML = `<p><a href="${backLink.href}">목록으로</a></p>`;
+        document.getElementById("nav").style.display = "none";
         return;
       }
 
-      const titleText = getTitle(current, level) || `기사 ${seq}`;
-      const bodyHtml = getBody(current, level) || "";
+      const title = getTitle(a, level);
+      elTitle.textContent = title;
+      document.title = `${title} · JP 타임즈`;
 
-      const imgWrap = document.getElementById("articleImgWrap");
-      const imgEl = document.getElementById("articleImg");
-      let imgSrc = getImg(current, level);
-
-      if (!imgSrc) {
+      // 이미지
+      let img = getImage(a, level);
+      if (!img){
         const defaults = {
           elementary: "images/default-elementary.jpg",
           middle: "images/default-middle.jpg",
           high: "images/default-high.jpg",
         };
-        imgSrc = defaults[level] || "";
+        img = defaults[level] || "";
       }
-
-      if (imgSrc) {
+      if (img){
         imgWrap.style.display = "";
-        imgEl.src = imgSrc;
-        imgEl.alt = getAlt(current, level, titleText);
+        imgEl.src = img;
+        imgEl.alt = title;
         imgEl.addEventListener("error", () => { imgWrap.style.display = "none"; });
-      } else {
-        imgWrap.style.display = "none";
       }
 
-      document.getElementById("articleTitle").textContent = titleText;
-      document.getElementById("articleBody").innerHTML = bodyHtml;
-      document.title = `${titleText} · JP 타임즈`;
+      // 본문
+      const body = getBestBody(a, level);
+      if (body){
+        // body가 이미 <p>를 포함하는 html일 수도 있고 텍스트일 수도 있어서 간단 처리
+        const looksHtml = /<\/(p|div|br|ul|ol|li|h\d)>/i.test(body) || /<br\s*\/?>/i.test(body);
+        elBody.innerHTML = looksHtml ? body : `<p>${esc(body).replace(/\n+/g, "</p><p>")}</p>`;
+      }else{
+        // ✅ 여기서 “비어있음”을 사용자에게 명확히 보여줌
+        elBody.innerHTML = "";
+        elNote.style.display = "";
+        elNote.textContent =
+          "이 기사는 제목만 있고 본문 데이터가 비어 있어요. (generate-weekly.js에서 body/summary/content를 채워야 합니다)";
+      }
 
-      // 키워드
-      const keywords = current.keywords;
-      const listEl = document.getElementById("keywordsList");
-      const keywordCount = { elementary: 5, middle: 7, high: 9 };
-      const count = keywordCount[level] || 5;
-
-      if (Array.isArray(keywords) && keywords.length) {
-        listEl.innerHTML = keywords.slice(0, count).map((k) => {
-          const meaning = k.meaning ? `<span class="keyword-meaning">${k.meaning}</span>` : "";
-          const ex = k.example ? `<p class="keyword-example-line">예문 : <span class="keyword-example">${k.example}</span></p>` : "";
-          return `<div class="keyword-item">
-            <p class="keyword-line"><span class="keyword-word">${k.word || ""}</span>${meaning ? " : " + meaning : ""}</p>
-            ${ex}
-          </div>`;
-        }).join("");
-      } else {
-        document.getElementById("articleKeywords").style.display = "none";
+      // 링크(있으면 보여줌)
+      const links = getLinks(a).filter(Boolean);
+      if (links.length){
+        linksWrap.style.display = "";
+        linksEl.innerHTML = links.map((u,i)=> `<a href="${esc(u)}" target="_blank" rel="noopener">링크 ${i+1}: ${esc(u)}</a>`).join("");
       }
 
       // 이전/다음
+      const seqs = Object.keys(articles).map(Number).filter(n=>!Number.isNaN(n)).sort((x,y)=>x-y);
       const idx = seqs.indexOf(seq);
-      const prevSeq = idx > 0 ? seqs[idx - 1] : null;
-      const nextSeq = idx >= 0 && idx < seqs.length - 1 ? seqs[idx + 1] : null;
+      const prevSeq = (idx > 0) ? seqs[idx-1] : null;
+      const nextSeq = (idx >= 0 && idx < seqs.length-1) ? seqs[idx+1] : null;
 
-      const prevLink = document.getElementById("prevArticle");
-      const nextLink = document.getElementById("nextArticle");
-      const navEl = document.getElementById("articleNav");
+      const prev = document.getElementById("prev");
+      const next = document.getElementById("next");
 
-      function makeHref(s) {
+      function href(s){
         return `article.html?level=${encodeURIComponent(level)}&issue=${encodeURIComponent(issue)}&seq=${encodeURIComponent(String(s))}`;
       }
 
-      if (prevSeq != null) {
-        const prevA = articles[String(prevSeq)] || articles[prevSeq];
-        prevLink.href = makeHref(prevSeq);
-        prevLink.innerHTML = `<span class="article-nav-label">← 이전 기사</span><span class="article-nav-title">${getTitle(prevA, level) || ""}</span>`;
-        prevLink.style.display = "";
-      } else prevLink.style.display = "none";
+      if (prevSeq != null){
+        const pa = articles[String(prevSeq)] || articles[prevSeq];
+        prev.href = href(prevSeq);
+        prev.textContent = `← 이전: ${getTitle(pa, level)}`;
+      }else prev.removeAttribute("href"), prev.textContent = "";
 
-      if (nextSeq != null) {
-        const nextA = articles[String(nextSeq)] || articles[nextSeq];
-        nextLink.href = makeHref(nextSeq);
-        nextLink.innerHTML = `<span class="article-nav-label">다음 기사 →</span><span class="article-nav-title">${getTitle(nextA, level) || ""}</span>`;
-        nextLink.style.display = "";
-      } else nextLink.style.display = "none";
-
-      if (prevSeq == null && nextSeq == null) navEl.style.display = "none";
+      if (nextSeq != null){
+        const na = articles[String(nextSeq)] || articles[nextSeq];
+        next.href = href(nextSeq);
+        next.textContent = `다음: ${getTitle(na, level)} →`;
+      }else next.removeAttribute("href"), next.textContent = "";
     })();
   </script>
 </body>
